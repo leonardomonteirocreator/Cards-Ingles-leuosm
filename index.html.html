@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FlashLingo</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Lora:ital,wght@0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f5f7;--sidebar:#1c1c1e;--card-bg:#ffffff;--border:#e5e5ea;
+  --text:#1c1c1e;--text2:#636366;--text3:#aeaeb2;
+  --blue:#0a84ff;--green:#30d158;--yellow:#ffd60a;--orange:#ff9f0a;--red:#ff453a;--purple:#bf5af2;
+  --radius:16px;--shadow:0 2px 20px rgba(0,0,0,.08);--shadow-card:0 8px 40px rgba(0,0,0,.12);
+}
+html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-size:15px}
+.layout{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:240px;min-width:240px;background:var(--sidebar);display:flex;flex-direction:column;overflow-y:auto;}
+.sidebar-logo{padding:28px 20px 22px;border-bottom:1px solid #2c2c2e;}
+.sidebar-logo .logo-mark{font-family:'Lora',serif;font-size:1.4rem;font-weight:600;color:#fff;letter-spacing:-.5px;}
+.sidebar-logo .logo-sub{font-size:.72rem;color:#636366;margin-top:2px;letter-spacing:.5px;text-transform:uppercase}
+.sidebar-section{padding:14px 12px 6px;font-size:.67rem;color:#48484a;text-transform:uppercase;letter-spacing:1.5px;font-weight:600}
+.nav-item{display:flex;align-items:center;gap:12px;padding:10px 16px;margin:2px 8px;border-radius:10px;cursor:pointer;color:#aeaeb2;font-size:.88rem;font-weight:500;transition:all .15s;border:none;background:none;width:calc(100% - 16px);text-align:left;}
+.nav-item svg{flex-shrink:0;opacity:.7}
+.nav-item:hover{background:#2c2c2e;color:#fff}.nav-item:hover svg{opacity:1}
+.nav-item.active{background:rgba(10,132,255,.15);color:var(--blue)}.nav-item.active svg{opacity:1}
+.nav-badge{margin-left:auto;background:var(--blue);color:#fff;font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:20px;min-width:22px;text-align:center}
+.nav-badge.red{background:var(--red)}
+.sidebar-footer{margin-top:auto;padding:14px;border-top:1px solid #2c2c2e}
+.stats-mini{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.smini{background:#2c2c2e;border-radius:10px;padding:10px 12px;text-align:center}
+.smini-val{font-size:1.2rem;font-weight:700;color:#fff}
+.smini-lbl{font-size:.65rem;color:#636366;text-transform:uppercase;letter-spacing:.8px;margin-top:2px}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{padding:14px 28px;background:var(--card-bg);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.topbar-title{font-size:1.05rem;font-weight:700}
+.topbar-sub{font-size:.78rem;color:var(--text2);margin-top:1px}
+.btn{padding:9px 18px;border-radius:10px;font-size:.82rem;font-weight:600;border:none;cursor:pointer;font-family:'Inter',sans-serif;transition:all .15s;display:inline-flex;align-items:center;gap:6px;}
+.btn-blue{background:var(--blue);color:#fff}.btn-blue:hover{background:#0077ed;transform:translateY(-1px)}
+.btn-ghost{background:none;border:1.5px solid var(--border);color:var(--text2)}.btn-ghost:hover{border-color:var(--blue);color:var(--blue)}
+.btn-danger{background:#ff453a20;color:var(--red);border:1.5px solid transparent}.btn-danger:hover{background:#ff453a30}
+.content{flex:1;overflow-y:auto;padding:24px}
+.content::-webkit-scrollbar{width:5px}.content::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.page{display:none}.page.active{display:block}
+/* STUDY */
+.study-wrap{max-width:680px;margin:0 auto}
+.study-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.study-count{font-size:.82rem;color:var(--text2);font-weight:500}
+.study-count strong{color:var(--blue);font-size:1rem}
+.progress-track{height:6px;background:var(--border);border-radius:3px;flex:1;margin:0 16px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--green));border-radius:3px;transition:width .4s}
+.card-wrap{perspective:1400px;width:100%;height:300px;cursor:pointer;margin-bottom:20px}
+.card-inner{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .5s cubic-bezier(.4,0,.2,1)}
+.card-wrap.flipped .card-inner{transform:rotateY(180deg)}
+.card-face{position:absolute;inset:0;background:var(--card-bg);border-radius:var(--radius);box-shadow:var(--shadow-card);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:44px;backface-visibility:hidden;-webkit-backface-visibility:hidden;border:1px solid var(--border);}
+.card-back{transform:rotateY(180deg);background:#f9f9f9}
+.card-label{position:absolute;top:16px;left:20px;font-size:.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:2px;font-weight:600;}
+.card-lang{position:absolute;top:16px;right:20px;font-size:.65rem;background:var(--blue);color:#fff;padding:3px 10px;border-radius:20px;font-weight:600;}
+.card-word{font-family:'Lora',serif;font-size:2.2rem;font-weight:600;text-align:center;line-height:1.3}
+.card-translation{font-family:'Lora',serif;font-size:1.7rem;font-weight:500;text-align:center}
+.card-example{font-size:.85rem;color:var(--text2);text-align:center;margin-top:12px;font-style:italic;line-height:1.6;max-width:380px}
+.tap-hint{position:absolute;bottom:18px;font-size:.75rem;color:var(--text3);display:flex;align-items:center;gap:5px}
+.rating-row{display:none;gap:10px;margin-bottom:18px}
+.rating-row.show{display:grid;grid-template-columns:repeat(4,1fr)}
+.rb{padding:14px 8px;border:1.5px solid var(--border);border-radius:14px;background:var(--card-bg);cursor:pointer;transition:all .18s;display:flex;flex-direction:column;align-items:center;font-family:'Inter',sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.05);position:relative;overflow:hidden;}
+.rb:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.12)}
+.rb::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.rb-0::before{background:var(--red)}.rb-1::before{background:var(--orange)}.rb-2::before{background:var(--blue)}.rb-3::before{background:var(--green)}
+.rb:hover.rb-0{border-color:var(--red);background:#fff5f5}.rb:hover.rb-1{border-color:var(--orange);background:#fff9f0}.rb:hover.rb-2{border-color:var(--blue);background:#f0f7ff}.rb:hover.rb-3{border-color:var(--green);background:#f0faf4}
+.rb-emoji{font-size:1.5rem;margin-bottom:5px;display:block}
+.rb-title{font-size:.77rem;font-weight:700;display:block;color:var(--text)}
+.rb-desc{font-size:.65rem;color:var(--text2);display:block;margin-top:2px;line-height:1.3;text-align:center}
+.rb-interval{display:inline-block;margin-top:7px;font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:20px;}
+.rb-0 .rb-interval{background:#ff453a20;color:var(--red)}.rb-1 .rb-interval{background:#ff9f0a20;color:var(--orange)}.rb-2 .rb-interval{background:#0a84ff20;color:var(--blue)}.rb-3 .rb-interval{background:#30d15820;color:var(--green)}
+.study-done{text-align:center;padding:50px 20px;display:none}.study-done.show{display:block}
+.done-icon{font-size:3.5rem;margin-bottom:14px}
+.done-title{font-family:'Lora',serif;font-size:1.9rem;font-weight:600;margin-bottom:8px}
+.done-sub{color:var(--text2);margin-bottom:24px;font-size:.88rem}
+.done-stats{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:24px}
+.done-stat{background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:14px 22px;text-align:center;box-shadow:var(--shadow)}
+.done-stat-val{font-size:1.7rem;font-weight:700;font-family:'Lora',serif}
+.done-stat-lbl{font-size:.72rem;color:var(--text2);margin-top:3px;text-transform:uppercase;letter-spacing:.8px}
+.empty{text-align:center;padding:50px 20px}
+.empty-icon{font-size:2.8rem;margin-bottom:10px}
+.empty h3{font-family:'Lora',serif;font-size:1.35rem;margin-bottom:7px}
+.empty p{color:var(--text2);font-size:.85rem}
+/* ADD */
+.add-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:20px}
+.add-card{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow)}
+.add-card h3{font-size:1rem;font-weight:700;margin-bottom:5px}
+.add-card p{font-size:.8rem;color:var(--text2);margin-bottom:18px;line-height:1.5}
+.form-group{margin-bottom:12px}
+.form-label{display:block;font-size:.75rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+.form-input,.form-textarea{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:'Inter',sans-serif;font-size:.9rem;background:var(--bg);color:var(--text);outline:none;transition:border .15s;}
+.form-input:focus,.form-textarea:focus{border-color:var(--blue);background:#fff}
+.form-textarea{min-height:100px;resize:vertical}
+.drop-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:36px 20px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg);}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--blue);background:#f0f7ff}
+.drop-zone input[type=file]{display:none}
+.drop-zone-icon{font-size:2.2rem;margin-bottom:8px}
+.drop-zone h4{font-weight:600;margin-bottom:5px}
+.drop-zone p{font-size:.8rem;color:var(--text2)}
+.import-preview{display:none;margin-top:14px}.import-preview.show{display:block}
+.preview-table{width:100%;border-collapse:collapse;font-size:.82rem}
+.preview-table th{padding:8px 12px;background:var(--bg);border:1px solid var(--border);font-weight:600;font-size:.72rem;text-align:left;color:var(--text2)}
+.preview-table td{padding:8px 12px;border:1px solid var(--border)}
+/* DECK */
+.search-bar{display:flex;gap:10px;margin-bottom:16px}
+.search-input{flex:1;padding:10px 16px;border:1.5px solid var(--border);border-radius:10px;font-family:'Inter',sans-serif;font-size:.88rem;background:var(--card-bg);color:var(--text);outline:none;}
+.search-input:focus{border-color:var(--blue)}
+.deck-table{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+.deck-table table{width:100%;border-collapse:collapse}
+.deck-table th{padding:11px 16px;background:var(--bg);font-size:.72rem;color:var(--text2);text-align:left;font-weight:600;text-transform:uppercase;letter-spacing:.8px;border-bottom:1px solid var(--border)}
+.deck-table td{padding:11px 16px;border-bottom:1px solid var(--border);font-size:.85rem}
+.deck-table tr:last-child td{border-bottom:none}.deck-table tr:hover td{background:#f9f9f9}
+.pill{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.7rem;font-weight:700}
+.pill-new{background:#bf5af220;color:var(--purple)}.pill-learning{background:#ff9f0a20;color:var(--orange)}.pill-review{background:#30d15820;color:var(--green)}
+.ef-bar{height:4px;background:var(--border);border-radius:2px;width:60px;overflow:hidden;margin-top:3px}
+.ef-fill{height:100%;border-radius:2px}
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:20px}
+.stat-tile{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow)}
+.stat-tile-val{font-family:'Lora',serif;font-size:2rem;font-weight:600}
+.stat-tile-lbl{font-size:.75rem;color:var(--text2);margin-top:4px;font-weight:500}
+.bar-chart{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+.bar-chart h4{font-weight:700;margin-bottom:14px;font-size:.9rem}
+/* ====== STORIES ====== */
+.level-tabs{display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap}
+.level-tab{padding:8px 20px;border-radius:30px;border:2px solid var(--border);background:var(--card-bg);color:var(--text2);font-size:.82rem;font-weight:700;cursor:pointer;transition:all .18s;}
+.level-tab:hover{border-color:currentColor}
+.level-tab.active-all{border-color:var(--text);background:#1c1c1e10;color:var(--text)}
+.level-tab.active-a1{border-color:#30d158;background:#30d15815;color:#30d158}
+.level-tab.active-a2{border-color:#0a84ff;background:#0a84ff15;color:#0a84ff}
+.level-tab.active-b1{border-color:#ff9f0a;background:#ff9f0a15;color:#ff9f0a}
+.level-tab.active-b2{border-color:#bf5af2;background:#bf5af215;color:#bf5af2}
+.story-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px}
+.story-card{background:var(--card-bg);border:1px solid var(--border);border-radius:20px;overflow:hidden;box-shadow:var(--shadow);cursor:pointer;transition:all .2s;}
+.story-card:hover{transform:translateY(-4px);box-shadow:0 12px 40px rgba(0,0,0,.14)}
+.story-scene{height:180px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.scene-morning{background:linear-gradient(160deg,#FF6B35 0%,#F7A96D 45%,#87CEEB 100%)}
+.scene-supermarket{background:linear-gradient(160deg,#11998e 0%,#38ef7d 100%)}
+.scene-neighborhood{background:linear-gradient(160deg,#f9ca24 0%,#f0932b 50%,#eb4d4b 100%)}
+.scene-beach{background:linear-gradient(180deg,#56CCF2 0%,#2F80ED 55%,#e8c99a 100%)}
+.scene-restaurant{background:linear-gradient(160deg,#c0392b 0%,#e74c3c 40%,#f9ca24 100%)}
+.scene-neighbor{background:linear-gradient(160deg,#6a3093 0%,#a044ff 50%,#ffb347 100%)}
+.scene-city{background:linear-gradient(180deg,#2c3e50 0%,#3498db 50%,#bdc3c7 100%)}
+.scene-interview{background:linear-gradient(160deg,#1a1a2e 0%,#16213e 45%,#0f3460 100%)}
+.scene-roadtrip{background:linear-gradient(160deg,#f7971e 0%,#ffd200 50%,#56ab2f 100%)}
+.scene-choice{background:linear-gradient(160deg,#0f0c29 0%,#302b63 50%,#24243e 100%)}
+.scene-garden{background:linear-gradient(160deg,#134e5e 0%,#71b280 100%)}
+.scene-career{background:linear-gradient(160deg,#373B44 0%,#4286f4 100%)}
+
+.scene-doctor{background:linear-gradient(160deg,#1a6b4a 0%,#43aa8b 50%,#f0f4f8 100%)}
+.scene-cake{background:linear-gradient(160deg,#f953c6 0%,#b91d73 50%,#ffecd2 100%)}
+.scene-zoo{background:linear-gradient(160deg,#56ab2f 0%,#a8e063 50%,#87ceeb 100%)}
+.scene-market{background:linear-gradient(160deg,#f7971e 0%,#ffd200 60%,#56ab2f 100%)}
+.scene-phone{background:linear-gradient(160deg,#2c3e50 0%,#3498db 60%,#a8edea 100%)}
+.scene-newstart{background:linear-gradient(160deg,#ee9ca7 0%,#ffdde1 50%,#87ceeb 100%)}
+.scene-nightshift{background:linear-gradient(160deg,#0f0c29 0%,#302b63 50%,#24243e 100%)}
+.scene-driving{background:linear-gradient(160deg,#373b44 0%,#4286f4 60%,#e8e8e8 100%)}
+.scene-visitor{background:linear-gradient(160deg,#f7971e 0%,#f9ca24 50%,#fff1cc 100%)}
+.scene-bookshop{background:linear-gradient(160deg,#4b1248 0%,#f10711 50%,#f9ca24 100%)}
+.scene-interpreter{background:linear-gradient(160deg,#134e5e 0%,#71b280 60%,#a8edea 100%)}
+.scene-legacy{background:linear-gradient(160deg,#4a3728 0%,#8b6f5e 50%,#f5e6d3 100%)}
+
+.scene-art{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.scene-char{position:absolute;font-size:3.2rem;filter:drop-shadow(0 4px 8px rgba(0,0,0,.2))}
+.scene-char2{position:absolute;font-size:2.2rem;filter:drop-shadow(0 3px 6px rgba(0,0,0,.15))}
+.scene-obj{position:absolute;font-size:1.8rem;opacity:.85}
+.buildings{position:absolute;bottom:0;left:0;right:0;display:flex;align-items:flex-end;gap:0;opacity:.5}
+.bld{background:#1a2744;flex:1}
+.sun{position:absolute;width:52px;height:52px;background:radial-gradient(circle,#fff7a1,#ffd600);border-radius:50%;box-shadow:0 0 30px #ffd60080}
+.story-read-badge{position:absolute;top:12px;right:12px;background:var(--green);color:#fff;font-size:.65rem;font-weight:800;padding:3px 10px;border-radius:20px;letter-spacing:.5px}
+.story-info{padding:18px 20px}
+.story-level-badge{display:inline-block;font-size:.65rem;font-weight:800;padding:3px 10px;border-radius:20px;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px}
+.badge-a1{background:#30d15820;color:#30d158}.badge-a2{background:#0a84ff20;color:#0a84ff}.badge-b1{background:#ff9f0a20;color:#ff9f0a}.badge-b2{background:#bf5af220;color:#bf5af2}
+.story-title{font-family:'Lora',serif;font-size:1.1rem;font-weight:600;margin-bottom:6px}
+.story-desc{font-size:.78rem;color:var(--text2);line-height:1.5;margin-bottom:10px}
+.story-meta{display:flex;gap:14px;font-size:.72rem;color:var(--text3)}
+/* READER */
+.reader-wrap{max-width:680px;margin:0 auto}
+.reader-header{display:flex;align-items:flex-start;gap:16px;margin-bottom:24px}
+.reader-back{background:none;border:1.5px solid var(--border);color:var(--text2);padding:8px 16px;border-radius:10px;cursor:pointer;font-family:'Inter',sans-serif;font-size:.82rem;font-weight:600;transition:all .15s;flex-shrink:0;}
+.reader-back:hover{border-color:var(--blue);color:var(--blue)}
+.reader-meta{flex:1}
+.reader-level{display:inline-block;font-size:.65rem;font-weight:800;padding:3px 10px;border-radius:20px;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}
+.reader-title{font-family:'Lora',serif;font-size:1.6rem;font-weight:600;margin-bottom:6px;line-height:1.3}
+.reader-info{display:flex;gap:16px;font-size:.75rem;color:var(--text3);flex-wrap:wrap}
+.reader-banner{height:200px;border-radius:16px;position:relative;overflow:hidden;margin-bottom:24px;box-shadow:var(--shadow-card)}
+.reader-banner .scene-char{font-size:4.5rem}.reader-banner .scene-char2{font-size:3rem}.reader-banner .scene-obj{font-size:2.4rem}.reader-banner .sun{width:60px;height:60px}
+.story-text-card{background:var(--card-bg);border:1px solid var(--border);border-radius:16px;padding:32px 36px;box-shadow:var(--shadow);margin-bottom:20px}
+.story-text-card p{font-family:'Lora',serif;font-size:1.08rem;line-height:1.95;color:var(--text);margin-bottom:1.1em}
+.story-text-card p:last-child{margin-bottom:0}
+/* HIGHLIGHTED WORD — clickable */
+.hl{background:#ffd60a30;border-radius:3px;padding:1px 4px;cursor:pointer;border-bottom:2px solid #ffd60a;font-style:normal;transition:background .15s;}
+.hl:hover{background:#ffd60a60}
+/* WORD POPUP */
+.word-popup{
+  position:fixed;background:var(--card-bg);
+  border:1px solid var(--border);border-radius:14px;
+  padding:16px 20px;box-shadow:0 12px 40px rgba(0,0,0,.18);
+  z-index:9999;max-width:280px;display:none;
+  animation:popIn .15s ease;
+}
+.word-popup.show{display:block}
+@keyframes popIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.wp-close{position:absolute;top:10px;right:12px;background:none;border:none;cursor:pointer;font-size:.9rem;color:var(--text3);line-height:1}
+.wp-en{font-weight:700;font-size:1rem;color:var(--text);padding-right:20px}
+.wp-pt{font-size:.85rem;color:var(--blue);margin-top:4px;font-weight:600}
+.wp-ex{font-size:.75rem;color:var(--text2);margin-top:8px;font-style:italic;border-top:1px solid var(--border);padding-top:8px;line-height:1.5}
+.vocab-box{background:var(--card-bg);border:1px solid var(--border);border-radius:16px;padding:22px 24px;box-shadow:var(--shadow);margin-bottom:20px}
+.vocab-box h4{font-weight:700;margin-bottom:14px;font-size:.9rem}
+.vocab-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.vocab-item{background:var(--bg);border-radius:10px;padding:10px 14px;cursor:pointer;transition:background .15s;border:1.5px solid transparent;}
+.vocab-item:hover{background:#ffd60a20;border-color:#ffd60a}
+.vocab-en{font-weight:700;font-size:.88rem}
+.vocab-pt{font-size:.8rem;color:var(--blue);margin-top:2px;font-weight:600}
+.vocab-ex{font-size:.73rem;color:var(--text3);margin-top:3px;font-style:italic;line-height:1.4}
+.tips-box{background:linear-gradient(135deg,#0a84ff12,#30d15808);border:1px solid #0a84ff30;border-radius:16px;padding:20px 24px;margin-bottom:20px}
+.tips-box h4{font-weight:700;margin-bottom:10px;font-size:.88rem;color:var(--blue)}
+.tips-box ul{padding-left:18px}
+.tips-box li{font-size:.82rem;color:var(--text2);margin-bottom:6px;line-height:1.5}
+.toast{position:fixed;bottom:24px;right:24px;background:#1c1c1e;color:#fff;padding:11px 20px;border-radius:12px;font-size:.85rem;opacity:0;transform:translateY(10px);transition:all .25s;z-index:1000;pointer-events:none;max-width:300px;display:flex;align-items:center;gap:8px;box-shadow:0 8px 32px rgba(0,0,0,.25);}
+.toast.show{opacity:1;transform:translateY(0)}
+@media(max-width:700px){
+  .add-grid,.story-grid{grid-template-columns:1fr}
+  .rating-row.show{grid-template-columns:1fr 1fr}
+  .story-text-card{padding:22px 20px}
+  .sidebar{width:56px;min-width:56px}
+  .sidebar .nav-item span,.sidebar-logo .logo-sub,.sidebar-section,.nav-badge,.sidebar-footer{display:none}
+  .sidebar-logo{padding:16px 0;display:flex;justify-content:center}
+  .sidebar-logo .logo-mark{font-size:1.1rem}
+  .nav-item{padding:12px;margin:2px 4px;justify-content:center}
+}
+</style>
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark">FlashLingo</div>
+    <div class="logo-sub">Repetição Espaçada</div>
+  </div>
+  <div class="sidebar-section">Estudo</div>
+  <button class="nav-item active" onclick="gotoPage('study',this)">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+    <span>Estudar</span>
+    <span class="nav-badge red" id="nav-due" style="display:none">0</span>
+  </button>
+  <button class="nav-item" onclick="gotoPage('stories',this)">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+    <span>Histórias</span>
+  </button>
+  <div class="sidebar-section">Adicionar</div>
+  <button class="nav-item" onclick="gotoPage('add',this)">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+    <span>Adicionar</span>
+  </button>
+  <button class="nav-item" onclick="gotoPage('import',this)">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    <span>Importar Excel</span>
+  </button>
+  <div class="sidebar-section">Análise</div>
+  <button class="nav-item" onclick="gotoPage('deck',this)">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+    <span>Baralho</span>
+    <span class="nav-badge" id="nav-total">0</span>
+  </button>
+  <button class="nav-item" onclick="gotoPage('stats',this)">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    <span>Estatísticas</span>
+  </button>
+  <div style="padding:10px 14px 0;text-align:center">
+    <div style="font-size:.6rem;color:#3a3a3c;letter-spacing:.5px;font-family:Inter,sans-serif">colaborado por <span style="color:#4a4a4e">@leomonteroi</span></div>
+  </div>
+  <div class="sidebar-footer">
+    <div class="stats-mini">
+      <div class="smini"><div class="smini-val" id="sm-total">0</div><div class="smini-lbl">Cards</div></div>
+      <div class="smini"><div class="smini-val" id="sm-streak" style="color:var(--orange)">0</div><div class="smini-lbl">Streak</div></div>
+    </div>
+  </div>
+</aside>
+<main class="main">
+  <div class="topbar">
+    <div><div class="topbar-title" id="tb-title">Estudar</div><div class="topbar-sub" id="tb-sub">Sem limite diário — estude no seu ritmo</div></div>
+  </div>
+  <div class="content">
+
+    <!-- STUDY -->
+    <div class="page active" id="page-study">
+      <div class="study-wrap">
+        <div id="study-main">
+          <div class="study-header">
+            <span class="study-count">Cartão <strong id="sc-current">1</strong> de <strong id="sc-total">1</strong></span>
+            <div class="progress-track"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
+            <span class="study-count" id="sc-remaining">0 restantes</span>
+          </div>
+          <div class="card-wrap" id="card-wrap" onclick="flipCard()">
+            <div class="card-inner">
+              <div class="card-face card-front">
+                <span class="card-label">Pergunta</span>
+                <span class="card-lang">EN</span>
+                <div class="card-word" id="cf-word">—</div>
+                <div class="tap-hint">
+                  <div style="width:26px;height:26px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:.7rem">↵</div>
+                  Clique ou Espaço para revelar
+                </div>
+              </div>
+              <div class="card-face card-back">
+                <span class="card-label">Resposta</span>
+                <span class="card-lang" style="background:var(--green)">PT</span>
+                <div class="card-translation" id="cb-word">—</div>
+                <div class="card-example" id="cb-example"></div>
+              </div>
+            </div>
+          </div>
+          <div class="rating-row" id="rating-row">
+            <button class="rb rb-0" onclick="rate(0)"><span class="rb-emoji">😵</span><span class="rb-title">Esqueci</span><span class="rb-desc">Não lembrei da palavra</span><span class="rb-interval">10 min</span></button>
+            <button class="rb rb-1" onclick="rate(1)"><span class="rb-emoji">😓</span><span class="rb-title">Difícil</span><span class="rb-desc">Demorei para lembrar</span><span class="rb-interval">1 dia</span></button>
+            <button class="rb rb-2" onclick="rate(2)"><span class="rb-emoji">🙂</span><span class="rb-title">Lembrei</span><span class="rb-desc">Resposta correta</span><span class="rb-interval">3 dias</span></button>
+            <button class="rb rb-3" onclick="rate(3)"><span class="rb-emoji">😎</span><span class="rb-title">Instantâneo</span><span class="rb-desc">Resposta imediata</span><span class="rb-interval" id="rb3-interval">× 2.5</span></button>
+          </div>
+        </div>
+        <div class="study-done" id="study-done">
+          <div class="done-icon">🏆</div>
+          <div class="done-title">Sessão concluída!</div>
+          <div class="done-sub">Todos os cartões pendentes foram revisados.</div>
+          <div class="done-stats" id="done-stats-row"></div>
+          <button class="btn btn-blue" onclick="restartSession()">Revisar Novamente</button>
+        </div>
+        <div class="empty" id="study-empty" style="display:none">
+          <div class="empty-icon">📭</div><h3>Nenhum cartão ainda</h3>
+          <p>Adicione cartões para começar a estudar.</p><br>
+          <button class="btn btn-blue" onclick="gotoPage('add',document.querySelectorAll('.nav-item')[2])">Adicionar Cartões</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STORIES LIST -->
+    <div class="page" id="page-stories">
+      <div class="level-tabs" id="level-tabs">
+        <button class="level-tab active-all" onclick="filterStories('all',this)">Todos</button>
+        <button class="level-tab" onclick="filterStories('A1',this)">A1 — Iniciante</button>
+        <button class="level-tab" onclick="filterStories('A2',this)">A2 — Básico</button>
+        <button class="level-tab" onclick="filterStories('B1',this)">B1 — Intermediário</button>
+        <button class="level-tab" onclick="filterStories('B2',this)">B2 — Avançado</button>
+      </div>
+      <div class="story-grid" id="story-grid"></div>
+    </div>
+
+    <!-- STORY READER -->
+    <div class="page" id="page-reader">
+      <div class="reader-wrap">
+        <div class="reader-header">
+          <button class="reader-back" onclick="backToStories()">← Voltar</button>
+          <div class="reader-meta">
+            <div class="reader-level" id="reader-level-badge"></div>
+            <div class="reader-title" id="reader-title"></div>
+            <div class="reader-info" id="reader-info"></div>
+          </div>
+        </div>
+        <div class="reader-banner" id="reader-banner"></div>
+        <div class="tips-box">
+          <h4>🎙 Dica de leitura em voz alta</h4>
+          <ul id="reader-tips"></ul>
+        </div>
+        <p style="font-size:.78rem;color:var(--text3);margin-bottom:12px">💡 Clique nas palavras <span style="background:#ffd60a30;border-bottom:2px solid #ffd60a;padding:0 4px;border-radius:3px">destacadas</span> para ver o significado</p>
+        <div class="story-text-card" id="reader-text"></div>
+        <div class="vocab-box">
+          <h4>📖 Vocabulário Principal — clique para ver</h4>
+          <div class="vocab-grid" id="reader-vocab"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADD -->
+    <div class="page" id="page-add">
+      <div class="add-grid">
+        <div><div class="add-card">
+          <h3>✏️ Adicionar cartão único</h3>
+          <p>Digite a palavra em inglês e sua tradução em português.</p>
+          <div class="form-group"><label class="form-label">🇺🇸 Inglês</label><input class="form-input" type="text" id="inp-en" placeholder="ex: serendipity"></div>
+          <div class="form-group"><label class="form-label">🇧🇷 Português</label><input class="form-input" type="text" id="inp-pt" placeholder="ex: serendipidade"></div>
+          <div class="form-group"><label class="form-label">Exemplo (opcional)</label><input class="form-input" type="text" id="inp-ex" placeholder="ex: It was a happy serendipity."></div>
+          <button class="btn btn-blue" onclick="addSingleCard()" style="width:100%">Adicionar Cartão</button>
+        </div></div>
+        <div><div class="add-card">
+          <h3>📋 Adicionar em lote (texto)</h3>
+          <p>Cole palavras no formato <strong>inglês | português</strong>, uma por linha.</p>
+          <div class="form-group"><label class="form-label">Formato: inglês | português</label><textarea class="form-textarea" id="inp-bulk" style="min-height:170px" placeholder="apple | maçã&#10;beautiful | bonito&#10;knowledge | conhecimento"></textarea></div>
+          <button class="btn btn-blue" onclick="addBulkCards()" style="width:100%">Importar Lista</button>
+        </div></div>
+      </div>
+    </div>
+
+    <!-- IMPORT -->
+    <div class="page" id="page-import">
+      <div class="add-card" style="max-width:600px">
+        <h3>📊 Importar planilha Excel / CSV</h3>
+        <p style="margin-bottom:18px">Arraste um arquivo <strong>.xlsx, .xls ou .csv</strong>. Coluna A = inglês, Coluna B = português, Coluna C = exemplo (opcional).</p>
+        <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropFile(event)">
+          <input type="file" id="file-input" accept=".xlsx,.xls,.csv" onchange="handleFile(this.files[0])">
+          <div class="drop-zone-icon">📂</div><h4>Arraste o arquivo aqui</h4>
+          <p>ou clique para selecionar · .xlsx · .xls · .csv</p>
+        </div>
+        <div class="import-preview" id="import-preview">
+          <div style="font-size:.82rem;color:var(--text2);margin-bottom:8px" id="preview-count"></div>
+          <div style="max-height:220px;overflow-y:auto;border-radius:10px;border:1px solid var(--border)">
+            <table class="preview-table"><thead><tr><th>#</th><th>🇺🇸 Inglês</th><th>🇧🇷 Português</th></tr></thead><tbody id="preview-tbody"></tbody></table>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:12px">
+            <button class="btn btn-blue" onclick="confirmImport()">✓ Confirmar</button>
+            <button class="btn btn-ghost" onclick="cancelImport()">Cancelar</button>
+          </div>
+        </div>
+      </div>
+      <div class="add-card" style="max-width:600px;margin-top:14px;background:#f9fafe;border-color:#c5d5f0">
+        <h3 style="color:var(--blue)">💡 Formato da planilha</h3>
+        <p style="color:var(--text2);line-height:1.8"><strong>Coluna A</strong> → Inglês · <strong>Coluna B</strong> → Português · <strong>Coluna C</strong> → Exemplo (opcional)</p>
+      </div>
+    </div>
+
+    <!-- DECK -->
+    <div class="page" id="page-deck">
+      <div class="search-bar">
+        <input class="search-input" type="text" placeholder="🔍  Buscar cartões..." oninput="renderDeck(this.value)" id="deck-search">
+        <button class="btn btn-danger" onclick="clearDeck()">🗑 Limpar tudo</button>
+      </div>
+      <div class="deck-table">
+        <table><thead><tr><th>Inglês</th><th>Português</th><th>Estado</th><th>Intervalo</th><th>Facilidade</th><th>Próxima Rev.</th><th></th></tr></thead><tbody id="deck-tbody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="page" id="page-stats">
+      <div class="stats-grid" id="stats-grid"></div>
+      <div class="bar-chart"><h4>Distribuição do baralho</h4><div id="dist-chart"></div></div>
+    </div>
+
+  </div>
+</main>
+</div>
+
+<!-- WORD POPUP -->
+<div class="word-popup" id="word-popup">
+  <button class="wp-close" onclick="closeWordPop()">✕</button>
+  <div class="wp-en" id="wp-en"></div>
+  <div class="wp-pt" id="wp-pt"></div>
+  <div class="wp-ex" id="wp-ex"></div>
+</div>
+
+<div class="toast" id="toast"><span id="toast-icon">✓</span><span id="toast-msg"></span></div>
+
+<script>
+const STORIES = [{"id": "s1", "level": "A1", "scene": "scene-morning", "sceneArt": "<div class=\"sun\" style=\"top:20px;left:30px\"></div>\n   <div class=\"scene-char\" style=\"bottom:8px;left:50%;transform:translateX(-50%)\">🧍‍♀️</div>\n   <div class=\"scene-obj\" style=\"bottom:12px;left:18%\">🛁</div>\n   <div class=\"scene-obj\" style=\"bottom:14px;right:18%;font-size:1.4rem\">☕</div>\n   <div class=\"scene-obj\" style=\"top:16px;right:20%;font-size:1.5rem\">⏰</div>", "title": "My Morning Routine", "character": "Ana, a student", "desc": "Follow Ana through her daily morning routine — from waking up to catching the bus.", "words": 232, "level_label": "A1 — Iniciante", "vocab": [{"en": "alarm", "pt": "alarme", "ex": "I turn off my alarm."}, {"en": "brush my teeth", "pt": "escovar os dentes", "ex": "I brush my teeth every morning."}, {"en": "get out of bed", "pt": "sair da cama", "ex": "I get out of bed at 7."}, {"en": "take a shower", "pt": "tomar banho", "ex": "I take a shower quickly."}, {"en": "comb my hair", "pt": "pentear o cabelo", "ex": "I comb my hair in the mirror."}, {"en": "water bottle", "pt": "garrafa de água", "ex": "I put my water bottle in my bag."}], "paragraphs": ["Every day, I <em class=\"hl\">wake up</em> at seven o'clock. First, I turn off my <em class=\"hl\">alarm</em> and <em class=\"hl\">get out of bed</em>. Then, I go to the bathroom. I <em class=\"hl\">brush my teeth</em> and wash my face. After that, I <em class=\"hl\">take a shower</em>.", "In the kitchen, I make breakfast. Today, I eat toast with butter and drink orange juice. My cat, Milo, sits on the chair and watches me. He wants food too, so I give him some milk.", "I put on my clothes — a blue shirt and black pants. I look in the mirror and <em class=\"hl\">comb my hair</em>. I check my bag. I have my books, my pencil case, and my <em class=\"hl\">water bottle</em>.", "At eight o'clock, I leave the house. I walk to the bus stop. The weather is sunny and warm. I listen to music on my phone. The bus comes in five minutes.", "I arrive at school at eight thirty. My friend Sara is at the door. \"Good morning!\" she says. \"Good morning!\" I say. We go to class together. A new day begins!"]}, {"id": "s2", "level": "A1", "scene": "scene-supermarket", "sceneArt": "<div class=\"scene-char\" style=\"bottom:8px;left:40%;transform:translateX(-50%)\">🛒</div>\n   <div class=\"scene-char2\" style=\"bottom:10px;right:15%\">🧑</div>\n   <div class=\"scene-obj\" style=\"top:20px;left:15%\">🍎</div>\n   <div class=\"scene-obj\" style=\"top:22px;right:18%\">🥛</div>\n   <div class=\"scene-obj\" style=\"bottom:20px;left:12%\">🍞</div>", "title": "At the Supermarket", "character": "Tom, going shopping", "desc": "Tom has a shopping list and needs to navigate the supermarket and pay at the cashier.", "words": 218, "level_label": "A1 — Iniciante", "vocab": [{"en": "shopping list", "pt": "lista de compras", "ex": "Tom has a shopping list."}, {"en": "basket", "pt": "cesta/carrinho", "ex": "He takes a basket near the door."}, {"en": "fresh", "pt": "fresco", "ex": "The apples look fresh."}, {"en": "loaf", "pt": "pão de forma (unidade)", "ex": "He takes one loaf of bread."}, {"en": "cashier", "pt": "caixa (pessoa)", "ex": "Tom goes to the cashier."}, {"en": "change", "pt": "troco", "ex": "Here is your change."}], "paragraphs": ["On Saturday morning, Tom goes to the supermarket. He has a <em class=\"hl\">shopping list</em>. He needs milk, eggs, bread, apples, and cheese.", "First, he takes a <em class=\"hl\">basket</em> near the door. He walks to the fruit section. He picks up six red apples. They look <em class=\"hl\">fresh</em> and delicious. He puts them in the basket.", "Next, he goes to the bread section. There are many types of bread — white bread, brown bread, and whole-grain bread. Tom likes whole-grain bread, so he takes one <em class=\"hl\">loaf</em>.", "In the dairy section, he finds milk and cheese. He takes two bottles of milk and one pack of cheddar cheese. He also sees yogurt. It looks good, but it is not on his list. He puts it back.", "Tom goes to the <em class=\"hl\">cashier</em>. A young woman smiles at him. \"Hello! Did you find everything?\" she asks. \"Yes, thank you!\" Tom says. \"That's eight dollars and fifty cents.\" Tom pays with a ten-dollar bill. \"Here is your <em class=\"hl\">change</em> — one dollar and fifty cents.\" \"Have a good day!\""]}, {"id": "s3", "level": "A1", "scene": "scene-neighborhood", "sceneArt": "<div class=\"scene-char\" style=\"bottom:8px;left:50%;transform:translateX(-60%)\">👩</div>\n   <div class=\"scene-obj\" style=\"bottom:14px;left:12%\">🌹</div>\n   <div class=\"scene-obj\" style=\"bottom:14px;right:12%\">🐕</div>\n   <div class=\"scene-obj\" style=\"top:16px;right:20%\">🏠</div>\n   <div class=\"scene-obj\" style=\"top:18px;left:18%\">🌻</div>", "title": "My Friendly Neighborhood", "character": "Emma, a local resident", "desc": "Emma describes the neighbors on her quiet street and the little moments that make her feel at home.", "words": 196, "level_label": "A1 — Iniciante", "vocab": [{"en": "neighbor", "pt": "vizinho/a", "ex": "She knows all her neighbors."}, {"en": "bark", "pt": "latir", "ex": "Max barks a lot."}, {"en": "bakery", "pt": "padaria", "ex": "There is a small bakery at the corner."}, {"en": "swing", "pt": "balanço", "ex": "The children play on the swings."}, {"en": "wonderful", "pt": "maravilhoso", "ex": "The smell is wonderful."}, {"en": "moment", "pt": "momento", "ex": "She loves these moments."}], "paragraphs": ["Emma lives in a small town. Her street is quiet and friendly. She knows all her <em class=\"hl\">neighbors</em>.", "Next door, there is Mr. and Mrs. Green. They are old but very kind. Every morning, Mr. Green waters his flowers. He has red roses and yellow sunflowers. They are beautiful.", "Across the street lives a young man named Carlos. He has a dog named Max. Max is a big brown dog. He <em class=\"hl\">barks</em> a lot, but he is friendly. Every evening, Carlos walks Max in the park.", "At the corner, there is a small <em class=\"hl\">bakery</em>. The owner is a woman named Rosa. She makes fresh bread every morning. The smell is <em class=\"hl\">wonderful</em>. Emma buys bread there every Friday.", "On Sunday afternoons, the neighbors meet in the small park. The children play on the <em class=\"hl\">swings</em>. The adults talk and drink coffee. Emma loves these <em class=\"hl\">moments</em>. She feels happy in her neighborhood. \"This is home,\" she thinks."]}, {"id": "s13", "level": "A1", "scene": "scene-doctor", "sceneArt": "<div class=\"scene-char\" style=\"bottom:8px;left:34%\">🧑‍⚕️</div>\n   <div class=\"scene-char2\" style=\"bottom:10px;right:22%\">😷</div>\n   <div class=\"scene-obj\" style=\"top:18px;left:16%\">💊</div>\n   <div class=\"scene-obj\" style=\"top:16px;right:16%\">🩺</div>\n   <div class=\"scene-obj\" style=\"bottom:14px;left:12%;font-size:1.3rem\">🌡️</div>", "title": "At the Doctor's Office", "character": "Pedro, feeling unwell", "desc": "Pedro wakes up sick and must visit the clinic. A practical story full of health vocabulary and polite conversation.", "words": 516, "level_label": "A1 — Iniciante", "vocab": [{"en": "appointment", "pt": "consulta / hora marcada", "ex": "Pedro made an appointment for ten o'clock."}, {"en": "sore throat", "pt": "dor de garganta", "ex": "He had a sore throat and a headache."}, {"en": "symptoms", "pt": "sintomas", "ex": "\"How long have you had these symptoms?\""}, {"en": "prescription", "pt": "receita médica", "ex": "She gave him a prescription for antibiotics."}, {"en": "antibiotic", "pt": "antibiótico", "ex": "You must finish all the antibiotics."}, {"en": "pharmacist", "pt": "farmacêutico/a", "ex": "The pharmacist explained how to take it."}], "paragraphs": ["Pedro did not feel well. He woke up on Tuesday morning with a <em class=\"hl\">sore throat</em>, a headache, and a high temperature. His mother looked at him and said, \"You need to see the doctor today.\"", "Pedro called the clinic and made an <em class=\"hl\">appointment</em> for ten o'clock. He put on his jacket, even though he felt hot, and took the bus to the health center.", "At the reception desk, a woman asked for his name and his health card. \"Please take a seat,\" she said. \"The doctor will see you in about fifteen minutes.\" Pedro sat in the waiting room. There were six other people there. Some were reading magazines. A small boy was playing with a toy car.", "When his name was called, Pedro went into the doctor's room. The doctor's name was Dr. Costa. She was a tall woman with short brown hair and a kind face. \"Good morning,\" she said. \"What seems to be the problem?\" Pedro told her about his <em class=\"hl\">sore throat</em>, his headache, and his temperature. \"How long have you had these <em class=\"hl\">symptoms</em>?\" she asked. \"Since yesterday afternoon,\" Pedro said.", "Dr. Costa asked him to open his mouth and say \"ahh.\" She looked at his throat. Then she checked his temperature — it was thirty-eight point five degrees. She listened to his chest with her stethoscope. \"You have an infection,\" she said. \"Your throat is quite red. I am going to give you a <em class=\"hl\">prescription</em> for some <em class=\"hl\">antibiotics</em>. You need to take one tablet three times a day, after meals.\" She also told him to drink a lot of water, rest at home, and avoid cold drinks.", "\"Will I feel better soon?\" Pedro asked. \"Yes,\" Dr. Costa said. \"Usually, people start to feel much better after two or three days. But you must finish all the <em class=\"hl\">antibiotics</em>, even if you feel better before they are finished.\" She printed the prescription and gave it to him. \"Any questions?\" \"Can I go to work tomorrow?\" The doctor shook her head. \"Not tomorrow. Stay at home and rest. If your fever goes above thirty-nine degrees, call us straight away.\"", "Pedro went to the pharmacy next to the clinic. The <em class=\"hl\">pharmacist</em> gave him the medicine and explained again how to take it. \"With food,\" she said. \"Not on an empty stomach. And no alcohol while you are taking these.\" Pedro nodded and said thank you. On the bus home, he felt tired but also a little relieved. He knew what was wrong and he knew how to get better. That was already something.", "His mother was waiting at home with a bowl of warm soup. \"How was it?\" she asked. \"I have an infection,\" Pedro said. \"But the doctor gave me medicine. She said I will feel better in a few days.\" His mother put the soup on the table and sat down next to him. \"Rest,\" she said simply. Sometimes, Pedro thought, the best medicine was exactly that."]}, {"id": "s14", "level": "A1", "scene": "scene-cake", "sceneArt": "<div class=\"scene-char\" style=\"bottom:8px;left:48%;transform:translateX(-50%)\">👧</div>\n   <div class=\"scene-obj\" style=\"bottom:12px;left:14%\">🎂</div>\n   <div class=\"scene-obj\" style=\"bottom:14px;right:14%\">🥚</div>\n   <div class=\"scene-obj\" style=\"top:16px;left:20%;font-size:1.6rem\">🎉</div>\n   <div class=\"scene-obj\" style=\"top:18px;right:18%\">🕯️</div>", "title": "The Birthday Cake", "character": "Sophie and her mother", "desc": "Sophie and her mother bake a birthday cake together on Thursday evening. A warm story about family, cooking, and small mistakes.", "words": 521, "level_label": "A1 — Iniciante", "vocab": [{"en": "recipe", "pt": "receita (culinária)", "ex": "Her mother read the recipe from a book."}, {"en": "crack", "pt": "quebrar (ovo)", "ex": "Sophie helped to crack the eggs."}, {"en": "mixture", "pt": "mistura / massa", "ex": "The mixture became smooth and yellow."}, {"en": "frosting", "pt": "cobertura / glacê", "ex": "They made the chocolate frosting."}, {"en": "ingredient", "pt": "ingrediente", "ex": "They mixed all the dry ingredients together."}, {"en": "decorate", "pt": "decorar", "ex": "Sophie decorated the cake with sugar stars."}], "paragraphs": ["Sophie was turning eight years old on Saturday. On Thursday evening, she and her mother decided to bake a birthday cake together. Sophie loved cooking with her mother. It was one of her favorite things to do.", "First, they looked in the kitchen cupboard. They had flour, eggs, sugar, butter, and baking powder. \"We need some milk too,\" Sophie's mother said. \"Can you check if there is milk in the refrigerator?\" Sophie opened the fridge door. \"Yes! There is half a bottle,\" she said.", "Her mother read the <em class=\"hl\">recipe</em> from a book. It was a simple recipe — a classic sponge cake with chocolate frosting. Sophie listened carefully. \"We need three eggs, two cups of flour, one cup of sugar, and one cup of butter,\" her mother said. \"And one teaspoon of baking powder.\"", "Sophie helped to <em class=\"hl\">crack</em> the eggs into a large bowl. She was very careful, but the third egg went a little wrong — some shell fell in. Her mother laughed. \"Don't worry,\" she said, and removed the small piece of shell with a spoon. \"It happens to everyone.\" They mixed all the dry <em class=\"hl\">ingredients</em> together first, and then added the butter, eggs, and milk.", "Sophie used the electric mixer. She loved the sound it made and the way the <em class=\"hl\">mixture</em> became smooth and pale yellow. Her mother put the mixture into two round cake tins and opened the oven. \"The oven is at one hundred and eighty degrees,\" her mother said. \"The cakes need to bake for about twenty-five minutes. Do not open the oven door while they are baking!\" Sophie nodded seriously. She knew this rule.", "While the cakes were in the oven, they made the chocolate <em class=\"hl\">frosting</em>. They melted dark chocolate in a small pan with butter and added icing sugar. Sophie stirred it slowly until it was thick and shiny. She tested a small spoonful. \"This is amazing,\" she said. Her mother smiled.", "The timer rang. The cakes came out of the oven — golden brown and perfectly round. Sophie could smell the warm sponge from across the kitchen. Her mother tested them with a fork. \"Perfect,\" she said. They waited for the cakes to cool. After thirty minutes, her mother put the first cake on a plate and spread a thick layer of frosting on top. Then she placed the second cake carefully on top and covered the whole thing in frosting.", "\"Your turn,\" her mother said. Sophie <em class=\"hl\">decorated</em> the cake with small colorful sugar stars and eight birthday candles — one for each year. Sophie stepped back and looked at the cake. It was not completely perfect — the frosting on one side was a little too thick and one candle was slightly crooked. But she thought it was the most beautiful cake she had ever seen. \"I made that,\" she said quietly. Her mother put her arm around her. \"We made that,\" she said."]}, {"id": "s15", "level": "A1", "scene": "scene-zoo", "sceneArt": "<div class=\"scene-char\" style=\"bottom:8px;left:48%;transform:translateX(-50%)\">🦁</div>\n   <div class=\"scene-obj\" style=\"bottom:12px;left:12%\">🦒</div>\n   <div class=\"scene-obj\" style=\"bottom:12px;right:12%\">🐘</div>\n   <div class=\"scene-obj\" style=\"top:14px;left:20%\">🦩</div>\n   <div class=\"scene-obj\" style=\"top:16px;right:18%;font-size:1.5rem\">🦈</div>", "title": "A Trip to the Zoo", "character": "Ben and his family", "desc": "Ben wakes up early for a Sunday at the zoo. Animals, facts, and an ice cream — a perfect family day.", "words": 528, "level_label": "A1 — Iniciante", "vocab": [{"en": "flamingo", "pt": "flamingo", "ex": "The flamingos were tall and pink."}, {"en": "trunk", "pt": "tromba (elefante)", "ex": "The baby elephant touched her with its trunk."}, {"en": "reptile house", "pt": "casa dos répteis", "ex": "They went to the reptile house."}, {"en": "humid", "pt": "úmido", "ex": "It was warm and humid inside."}, {"en": "aquarium", "pt": "aquário", "ex": "They visited the aquarium section."}, {"en": "enclosure", "pt": "recinto (de animal)", "ex": "One lion was lying in the enclosure."}], "paragraphs": ["On Sunday morning, Ben woke up very early. He jumped out of bed and ran to his parents' room. \"Today is the zoo!\" he said, pulling the blanket off his father. His father opened one eye. \"Yes, yes,\" he said. \"Give me five minutes.\" By nine o'clock, the whole family was ready — Ben, his little sister Mia, and their parents. They drove to the city zoo and arrived just as the gates opened.", "The first animals they saw were the <em class=\"hl\">flamingos</em>. They were tall and thin with long pink necks and legs. Mia pointed at them. \"They're pink!\" she said. Their father explained that flamingos eat special food that makes their feathers that colour. \"If they eat different food, they become white,\" he said. Ben thought this was one of the most interesting things he had ever heard.", "Next, they walked to the elephant area. There were three elephants — two adults and one baby. The baby elephant was walking behind its mother and kept touching her with its <em class=\"hl\">trunk</em>. The keeper told the visitors that the baby was three months old and had not yet been given a name. The visitors could vote on the zoo's website. Ben decided he would vote later. He wanted to name it Thunder.", "After the elephants, they went to the <em class=\"hl\">reptile house</em>. It was warm and <em class=\"hl\">humid</em> inside, with glass tanks on every wall. Ben pressed his face against the glass of the python tank. The snake was huge — the sign said it was four metres long and weighed forty kilograms. It was curled up under a heat lamp, completely still. \"Is it alive?\" Mia asked. \"Yes,\" their mother said. \"It's sleeping.\"", "They ate lunch at the picnic area near the lion <em class=\"hl\">enclosure</em>. Ben had a sandwich and apple juice. He could see one of the lions lying in the shade. It opened its mouth in a wide yawn, showing enormous yellow teeth. \"That yawn was bigger than my whole head,\" said Ben. His father agreed.", "In the afternoon, they visited the <em class=\"hl\">aquarium</em> section. The tunnel under the water was Ben's favourite part of the whole day. He walked slowly through the glass tunnel while sharks and rays moved silently above and around him. The light was blue and green and everything was quiet. He felt like he was in another world.", "As the zoo was closing, the family bought ice cream near the exit. Mia got strawberry. Ben chose chocolate with sprinkles. They walked back to the car slowly, everyone a little tired.", "On the drive home, their father asked, \"What was your favourite animal today?\" \"The shark,\" said Ben, without hesitating. \"The flamingos,\" said Mia. \"Because they are pink.\" Ben was quiet for a moment. He looked out of the car window and thought about the baby elephant walking behind its mother with its <em class=\"hl\">trunk</em>. He had decided its name. \"Thunder,\" he said quietly to himself, and smiled."]}, {"id": "s4", "level": "A2", "scene": "scene-beach", "sceneArt": "<div class=\"scene-char\" style=\"bottom:10px;left:35%\">🏊‍♀️</div>\n   <div class=\"scene-char2\" style=\"bottom:12px;right:20%\">🧔</div>\n   <div class=\"scene-obj\" style=\"bottom:8px;left:12%\">🏖️</div>\n   <div class=\"sun\" style=\"top:14px;right:24px\"></div>\n   <div class=\"scene-obj\" style=\"bottom:16px;right:8%\">🌊</div>", "title": "A Day at the Beach", "character": "Maria and her friends", "desc": "Maria and her friends spend a perfect summer Sunday at the beach.", "words": 248, "level_label": "A2 — Básico", "vocab": [{"en": "forecast", "pt": "previsão (do tempo)", "ex": "The weather forecast said sunny."}, {"en": "packed", "pt": "arrumaram / embalaram", "ex": "They packed their bags."}, {"en": "spread", "pt": "estendeu", "ex": "Maria spread her towel on the sand."}, {"en": "gentle", "pt": "suave / gentil", "ex": "The waves were small and gentle."}, {"en": "shade", "pt": "sombra", "ex": "They sat in the shade."}, {"en": "sunset", "pt": "pôr do sol", "ex": "Maria took photos of the sunset."}], "paragraphs": ["Last Sunday, Maria and her friends decided to go to the beach. The weather <em class=\"hl\">forecast</em> said it was going to be sunny and hot, so they <em class=\"hl\">packed</em> their bags the night before.", "They woke up early and drove for about an hour. When they arrived, the beach was already quite busy, but they found a nice spot near some rocks. Maria <em class=\"hl\">spread</em> her towel on the sand and looked at the sea. The water was bright blue and the waves were small and <em class=\"hl\">gentle</em>.", "After a few minutes, her friend Jake ran into the water. \"Come on! It's perfect!\" he shouted. Maria followed him. The water was cold at first, but then it felt wonderful. They swam and played in the waves for almost two hours.", "In the afternoon, they felt hungry. They bought sandwiches and cold drinks from a small food stand near the entrance. They sat in the <em class=\"hl\">shade</em> and talked and laughed about old memories.", "As the sun started to go down, the sky turned orange and pink. Maria took out her phone and took some photos of the beautiful <em class=\"hl\">sunset</em>. \"This was a perfect day,\" she said. Everyone agreed."]}, {"id": "s5", "level": "A2", "scene": "scene-restaurant", "sceneArt": "<div class=\"scene-char\" style=\"bottom:10px;left:28%\">👩</div>\n   <div class=\"scene-char2\" style=\"bottom:10px;right:24%\">🧑</div>\n   <div class=\"scene-obj\" style=\"bottom:14px;left:50%;transform:translateX(-50%);font-size:1.5rem\">🍝</div>\n   <div class=\"scene-obj\" style=\"top:18px;left:14%\">🕯️</div>\n   <div class=\"scene-obj\" style=\"top:16px;right:14%\">🍷</div>", "title": "Dinner at Marco's", "character": "Sophie and Daniel", "desc": "Sophie and Daniel visit an Italian restaurant for the first time.", "words": 252, "level_label": "A2 — Básico", "vocab": [{"en": "recommend", "pt": "recomendar", "ex": "\"What do you recommend?\" she asked."}, {"en": "option", "pt": "opção", "ex": "There were many options on the menu."}, {"en": "crispy", "pt": "crocante", "ex": "The pizza had a thin, crispy crust."}, {"en": "creamy", "pt": "cremoso", "ex": "The tiramisu was creamy and soft."}, {"en": "bill", "pt": "conta (restaurante)", "ex": "When they asked for the bill..."}, {"en": "definitely", "pt": "definitivamente / com certeza", "ex": "\"We'll definitely come back.\""}], "paragraphs": ["Last Friday evening, Sophie and her boyfriend Daniel went to an Italian restaurant called Marco's. It was their first time there, and they were excited.", "The waiter greeted them at the door and showed them to a table near the window. He gave them the menus. There were many <em class=\"hl\">options</em> — pasta, pizza, salads, and seafood.", "\"What do you <em class=\"hl\">recommend</em>?\" Sophie asked the waiter. \"The spaghetti carbonara is very popular,\" he said. \"And the tiramisu for dessert is excellent.\" Sophie decided to order the carbonara. Daniel chose a mushroom pizza and a green salad.", "The food arrived in about twenty minutes. Sophie tasted her pasta and closed her eyes. \"This is incredible,\" she whispered. Daniel's pizza had a thin, <em class=\"hl\">crispy</em> crust and lots of cheese. He loved it.", "For dessert, they both ordered the tiramisu. It was <em class=\"hl\">creamy</em>, soft, and sweet. When they asked for the <em class=\"hl\">bill</em>, the manager came to their table. \"Did you enjoy your dinner?\" \"It was wonderful,\" Sophie said. \"We'll <em class=\"hl\">definitely</em> come back.\""]}, {"id": "s6", "level": "A2", "scene": "scene-neighbor", "sceneArt": "<div class=\"scene-char\" style=\"bottom:10px;left:30%\">🧑</div>\n   <div class=\"scene-char2\" style=\"bottom:10px;right:22%\">👩</div>\n   <div class=\"scene-obj\" style=\"bottom:14px;left:50%;transform:translateX(-50%)\">🍪</div>\n   <div class=\"scene-obj\" style=\"top:16px;left:16%\">📦</div>\n   <div class=\"scene-obj\" style=\"top:18px;right:16%\">🏠</div>", "title": "The New Neighbor", "character": "David and his new neighbors", "desc": "David bakes cookies and knocks on his new neighbors' door — a warm story about kindness and community.", "words": 258, "level_label": "A2 — Básico", "vocab": [{"en": "moving truck", "pt": "caminhão de mudança", "ex": "He noticed the moving truck outside."}, {"en": "introduce himself", "pt": "apresentar-se", "ex": "David decided to introduce himself."}, {"en": "warmly", "pt": "calorosamente", "ex": "She smiled warmly."}, {"en": "touched", "pt": "emocionado / tocado", "ex": "Lisa looked very touched."}, {"en": "nearest", "pt": "mais próximo", "ex": "He told them about the nearest park."}, {"en": "settle in", "pt": "se instalar / adaptar-se", "ex": "He hoped they would settle in quickly."}], "paragraphs": ["Two weeks ago, a new family moved into the apartment next to David's. He noticed the <em class=\"hl\">moving truck</em> outside his building early in the morning.", "That evening, David decided to <em class=\"hl\">introduce himself</em>. He baked some chocolate chip cookies and knocked on their door. A woman opened it. She looked tired but smiled <em class=\"hl\">warmly</em>. \"Hello! I'm David, from next door.\" \"Oh, how nice! I'm Lisa. Please, come in!\"", "The apartment was still full of boxes, but Lisa introduced him to her husband Ben and their daughter Maya. They had moved from another city because Ben had found a new job.", "David gave them the cookies. \"These are for you — welcome to the building.\" Lisa looked very <em class=\"hl\">touched</em>. \"That is so kind of you. We haven't eaten since lunch!\" she said, laughing.", "They talked for almost an hour. David told them about the neighborhood — the best supermarket, the <em class=\"hl\">nearest</em> park, which bus to take to the city center. When David left, he felt happy. He hoped they would <em class=\"hl\">settle in</em> quickly."]}, {"id": "s16", "level": "A2", "scene": "scene-market", "sceneArt": "<div class=\"scene-char\" style=\"bottom:8px;left:46%;transform:translateX(-50%)\">🧍‍♀️</div>\n   <div class=\"scene-obj\" style=\"bottom:12px;left:10%\">🥕</div>\n   <div class=\"scene-obj\" style=\"bottom:12px;right:10%\">🧀</div>\n   <div class=\"scene-obj\" style=\"top:14px;left:18%;font-size:1.8rem\">🏪</div>\n   <div class=\"scene-obj\" style=\"top:14px;right:16%;font-size:1.6rem\">🌸</div>", "title": "The Saturday Market", "character": "Clara, a new resident", "desc": "Clara finally visits the Saturday market near her apartment and discovers fresh vegetables, handmade pottery, old books, and much more.", "words": 534, "level_label": "A2 — Básico", "vocab": [{"en": "awning", "pt": "toldo", "ex": "The stalls were covered with colorful awnings."}, {"en": "stall", "pt": "barraca / banca", "ex": "She stopped at the vegetable stall."}, {"en": "kiln", "pt": "forno (cerâmica)", "ex": "She fires them in a wood kiln."}, {"en": "sample", "pt": "amostra / degustar", "ex": "The woman was generous with samples."}, {"en": "second-hand", "pt": "de segunda mão / usado", "ex": "She found a stall selling second-hand books."}, {"en": "barista", "pt": "barista", "ex": "The barista made it in a little glass."}], "paragraphs": ["Clara had been living in her new neighborhood for three weeks, but she had not yet explored the Saturday market that she passed every morning on her way to the coffee shop. One Saturday in October, she finally decided to go.", "She arrived at nine o'clock. The market was already busy. Long rows of <em class=\"hl\">stalls</em> stretched down both sides of the main street, covered with wooden tables and colorful <em class=\"hl\">awnings</em>. The air smelled of fresh bread, roasted coffee, and something herbal she could not immediately identify.", "The first stall she stopped at sold vegetables and fruit. The farmer was an older man with a red face and large hands. He was arranging pumpkins into a pyramid when Clara arrived. She did not recognize some of the vegetables. She pointed at a small round purple vegetable. \"What is this?\" she asked. \"Chioggia beet,\" the farmer said. \"Very sweet. You can eat it raw or roast it.\" Clara decided to buy two.", "As she continued down the market, she stopped at a stall selling handmade pottery — small bowls, mugs, and plates in deep blue and cream colours. The maker was a young woman who explained that she made everything in her studio at home. \"Each piece is different,\" she said. \"I fire them in a wood <em class=\"hl\">kiln</em>, so the results are never exactly the same.\" Clara picked up a small mug. It was heavier than she expected and warm-looking. She bought it.", "At the cheese stall, she spent much more time than she intended. There were at least fifteen types, and the woman behind the counter was generous with <em class=\"hl\">samples</em>. Clara tried a hard sheep's cheese that was sharp and salty, a soft herb cheese that she spread on a small piece of bread, and a smoked cheese that tasted like autumn. She bought a small piece of each.", "Near the end of the market, she found a stall selling <em class=\"hl\">second-hand</em> books. A large dog was asleep under the table. The owner, a man in his sixties with round glasses and an old green jacket, was reading. Clara looked through the stacks. Most of the books were old and their covers were faded, but their spines were full of interesting titles. She found a collection of short stories in very good condition for one euro.", "She finished her visit with a cup of coffee from a small van near the exit. The <em class=\"hl\">barista</em> made it in a little glass and Clara stood beside a tree and watched the market. People were carrying baskets and cloth bags. A small child was trying to reach a bunch of sunflowers that was almost as tall as she was.", "Clara finished her coffee. She had spent almost two hours in the market without meaning to. Her bag was heavy with vegetables, cheese, a mug, and a book. She felt the pleasant kind of tired that comes from doing something good with the morning. She decided she would come back next week."]}, {"id": "s17", "level": "A2", "scene": "scene-phone", "sceneArt": "<div class=\"scene-char\" style=\"bottom:8px;left:48%;transform:translateX(-50%)\">🧑</div>\n   <div class=\"scene-obj\" style=\"bottom:14px;left:14%\">📱</div>\n   <div class=\"scene-obj\" style=\"bottom:14px;right:14%\">☕</div>\n   <div class=\"scene-obj\" style=\"top:16px;left:20%;font-size:1.6rem\">😮</div>\n   <div class=\"scene-obj\" style=\"top:18px;right:18%;font-size:1.5rem\">🗓️</div>", "title": "A Call from the Past", "character": "Michael and an old friend", "desc": "Michael is cooking dinner when his phone rings. It's a friend he hasn't heard from in seven years. A story about reconnecting and old memories.", "words": 538, "level_label": "A2 — Básico", "vocab": [{"en": "recognize", "pt": "reconhecer", "ex": "He did not recognize the number."}, {"en": "graduation", "pt": "formatura", "ex": "After graduation, life moved in different directions."}, {"en": "catching up", "pt": "se atualizar / colocar o papo em dia", "ex": "They slipped easily into catching up."}, {"en": "amused", "pt": "divertido / entretido", "ex": "His voice always sounded a little amused."}, {"en": "compare dates", "pt": "comparar datas / verificar agendas", "ex": "They compared dates to find a free evening."}, {"en": "proper", "pt": "de verdade / como deve ser", "ex": "\"A proper catch-up,\" Daniel said."}], "paragraphs": ["Michael was in the middle of cooking dinner when his phone rang. He looked at the screen and did not <em class=\"hl\">recognize</em> the number. He almost did not answer. But something made him pick up.", "\"Michael? It's Daniel. Daniel Webb.\" For a second, Michael said nothing. Daniel Webb. He had not heard that name in almost seven years. They had been close friends in university — spent three years living in the same apartment, studying for the same exams, watching the same terrible films on Friday nights. Then <em class=\"hl\">graduation</em> happened, life moved in different directions, and somehow the contact just stopped.", "\"Daniel. Wow.\" Michael turned down the heat on the stove. \"How are you?\" \"I'm good, I'm good,\" Daniel said. His voice sounded the same — slightly fast, always a little <em class=\"hl\">amused</em> by something. \"Sorry for calling out of nowhere. I found your number through Maria — you remember Maria from the second year? She's in Edinburgh now.\"", "They talked for a few minutes about how they'd found each other, and then slipped easily into <em class=\"hl\">catching up</em>. Daniel had moved to Berlin three years ago to work for an engineering company. He had married a woman named Petra and they had a daughter who was almost two. Michael told him about his job, his apartment, his relationship. \"I've been with Elena for two years,\" he said. \"We moved in together in the spring.\"", "\"Listen,\" Daniel said, \"the reason I called — I'm going to be in the city next month. I thought, if you're around, we could actually meet for dinner? A <em class=\"hl\">proper</em> catch-up.\" Michael felt something that was hard to describe — a warmth, a slight surprise at how much he was looking forward to it. \"Yes, definitely,\" he said. \"When are you coming?\"", "They <em class=\"hl\">compared dates</em>. The eleventh and twelfth were busy for Michael. Daniel had meetings on the ninth. Eventually they agreed on the evening of the thirteenth — a Tuesday. \"I'll pick somewhere good,\" Michael said. \"There's a Portuguese restaurant near the river that I keep meaning to try.\" \"Perfect,\" Daniel said. \"And Michael — bring Elena. Petra is coming too.\"", "After he hung up, Michael stood in the kitchen for a moment. On the stove, the pasta was getting close to overcooking. He quickly turned up the heat and stirred it. The kitchen smelled of garlic and tomatoes. He was smiling. It was strange how someone could completely disappear from your life for seven years and then reappear in a single phone call as if no real time had passed.", "He made a note in his calendar: Tuesday the thirteenth. Then he added a second line underneath: pick up wine. Some friendships, he thought, were just better than you remembered."]}, {"id": "s18", "level": "A2", "scene": "scene-newstart", "sceneArt": "<div class=\"scene-char\" style=\"bottom:8px;left:48%;transform:translateX(-50%)\">👩</div>\n   <div class=\"scene-obj\" style=\"bottom:12px;left:12%\">📦</div>\n   <div class=\"scene-obj\" style=\"bottom:12px;right:12%;font-size:1.5rem\">🌿</div>\n   <div class=\"scene-obj\" style=\"top:16px;left:18%;font-size:1.6rem\">🏙️</div>\n   <div class=\"scene-obj\" style=\"top:16px;right:16%\">☀️</div>", "title": "A New Start", "character": "Sarah, starting over", "desc": "Sarah arrives in a new city with four boxes, two suitcases, and a small olive tree. A story about beginning again and finding home in unfamiliar places.", "words": 549, "level_label": "A2 — Básico", "vocab": [{"en": "tenant", "pt": "inquilino/a", "ex": "The previous tenant had painted the wall green."}, {"en": "essential", "pt": "item essencial", "ex": "She unpacked only the essentials."}, {"en": "rejection", "pt": "rejeição", "ex": "She had two previous rejections."}, {"en": "explore", "pt": "explorar", "ex": "She explored the neighborhood slowly."}, {"en": "florist", "pt": "floricultura / florista", "ex": "There was a florist in the small street."}, {"en": "commuter", "pt": "passageiro pendular", "ex": "She watched the commuters going the other way."}], "paragraphs": ["When Sarah arrived at her new apartment, she had four boxes, two suitcases, and a small plant she had carried on the train because she refused to leave it behind. The plant was a small olive tree in a terracotta pot. It had been with her for three years and she considered it good luck.", "The apartment was on the third floor of an old building in a part of the city she had never lived in before. The previous <em class=\"hl\">tenant</em> had painted one wall of the living room dark green, which Sarah had not expected. She stood in the middle of the room for a while, looking at it. Then she decided she liked it.", "She had moved to this city for a new job — a position at a small architecture firm that had accepted her application after two previous <em class=\"hl\">rejections</em>. The city was not where she had grown up. She did not know many people here. She had a cousin who lived about forty minutes away by train, and a friend from university who had been in the city for two years and had promised to show her around. That was all.", "The first evening, she unpacked only the <em class=\"hl\">essentials</em>: sheets and a pillow, a towel, a mug, her laptop. She ordered food and ate it sitting on the floor next to the window. Outside, she could see a narrow street with a row of small shops — a <em class=\"hl\">florist</em>, a hardware store, a café with yellow chairs. It had started to rain lightly and the street lights reflected in the wet pavement. She thought the street was beautiful.", "During the first week, she <em class=\"hl\">explored</em> slowly. She found the nearest supermarket and learned which bus went to the office. She discovered a bakery around the corner that opened at six-thirty in the morning and whose bread she decided was the best she had ever eaten. She began to notice things: a cat that always sat in the window of the hardware shop, the smell of coffee from the café below that drifted up on weekday mornings, the old man who walked past every afternoon at exactly four o'clock with a small black dog.", "Her friend Joanna came on the Saturday of the first week. They walked for three hours, stopping at a market, a bookshop, and two cafés. Joanna knew the city well and had the habit of saying \"oh, you'll love this\" before every new place, and she was usually right. By the end of the afternoon, Sarah felt less like a visitor.", "There were hard moments too. The first Monday morning, she felt very alone. She did not know the routines of the office yet, and the coffee machine worked differently from every machine she had ever used. But by Friday she knew people's names and where the good sandwiches were at lunch.", "On the following Sunday morning, she made coffee and sat at the window. The olive tree was on the table beside her, in the patch of sunlight that came through the glass each morning. She had figured out that much, at least — where the sun came. She thought: this is the beginning."]}, {"id": "s7", "level": "B1", "scene": "scene-city", "sceneArt": "<div class=\"buildings\" style=\"height:90px\">\n     <div class=\"bld\" style=\"height:90%\"></div><div class=\"bld\" style=\"height:60%\"></div>\n     <div class=\"bld\" style=\"height:80%\"></div><div class=\"bld\" style=\"height:100%\"></div>\n     <div class=\"bld\" style=\"height:70%\"></div><div class=\"bld\" style=\"height:55%\"></div>\n     <div class=\"bld\" style=\"height:85%\"></div><div class=\"bld\" style=\"height:65%\"></div>\n   </div>\n   <div class=\"scene-char\" style=\"bottom:10px;left:50%;transform:translateX(-50%)\">🧭</div>\n   <div class=\"scene-obj\" style=\"top:18px;left:14%;font-size:1.5rem\">🗺️</div>", "title": "Lost in the City", "character": "Marcus, a traveler", "desc": "Marcus gets completely lost in Lisbon's narrow streets. A story about asking for help and unexpected discoveries.", "words": 290, "level_label": "B1 — Intermediário", "vocab": [{"en": "confident", "pt": "confiante", "ex": "He felt completely confident."}, {"en": "navigate", "pt": "navegar / se orientar", "ex": "He had navigated complicated metro systems."}, {"en": "twisted", "pt": "torcia / serpenteava", "ex": "The streets twisted in every direction."}, {"en": "cautious", "pt": "cauteloso", "ex": "She said with a cautious smile."}, {"en": "hesitated", "pt": "hesitou", "ex": "She hesitated before answering."}, {"en": "guide", "pt": "guia", "ex": "He followed his new guide."}], "paragraphs": ["Marcus had always considered himself a good traveler. He had visited twelve countries, <em class=\"hl\">navigated</em> complicated metro systems, and managed to order food in languages he barely spoke. So when he arrived in Lisbon for a weekend trip, he felt completely <em class=\"hl\">confident</em>.", "That was his first mistake. He had been wandering through the narrow streets of the old district for what felt like twenty minutes when he realized he had no idea where he was. The streets <em class=\"hl\">twisted</em> in every direction without any clear logic.", "He stopped a woman carrying grocery bags. \"Excuse me, do you speak English?\" he asked. \"A little,\" she said, with a <em class=\"hl\">cautious</em> smile. She studied the hotel name on his card and pointed up the hill. \"You walk up, then turn left at the yellow church, then down the stairs and right. Maybe ten minutes?\" She <em class=\"hl\">hesitated</em>. \"But the stairs are confusing.\"", "She wasn't wrong. Marcus found the yellow church, turned left, found the stairs, went down, turned right — and ended up in a small square he had already passed twice before. He sat on a bench and laughed at himself.", "An old man sitting nearby looked at him. \"Lost?\" he asked, in perfectly clear English. Marcus nodded. The man stood up. \"Come. I'll show you.\" Sometimes getting lost, Marcus thought as he followed his new <em class=\"hl\">guide</em>, was the best way to find something unexpected."]}, {"id": "s8", "level": "B1", "scene": "scene-interview", "sceneArt": "<div class=\"scene-char\" style=\"bottom:10px;left:32%\">👩‍💼</div>\n   <div class=\"scene-char2\" style=\"bottom:10px;right:22%\">🧑‍💼</div>\n   <div class=\"scene-obj\" style=\"top:20px;left:50%;transform:translateX(-50%)\">📋</div>\n   <div class=\"scene-obj\" style=\"top:18px;left:14%;font-size:1.4rem\">💼</div>\n   <div class=\"scene-obj\" style=\"top:18px;right:14%;font-size:1.4rem\">🖊️</div>", "title": "The Interview", "character": "Priya, a communications professional", "desc": "Priya prepares carefully for a job interview. A realistic story with professional vocabulary and tips you can use yourself.", "words": 298, "level_label": "B1 — Intermediário", "vocab": [{"en": "rehearsed", "pt": "ensaiou / praticou", "ex": "She had rehearsed her answers."}, {"en": "imaginary", "pt": "imaginário", "ex": "Speaking to an imaginary interviewer."}, {"en": "engagement", "pt": "engajamento", "ex": "She increased social media engagement."}, {"en": "misjudged", "pt": "calculou errado / subestimou", "ex": "I once misjudged a client's expectations."}, {"en": "align", "pt": "alinhar", "ex": "I learned to align expectations early."}, {"en": "honest", "pt": "honesto/a", "ex": "She said honestly about her failure."}], "paragraphs": ["When Priya walked into the office building, she told herself she was calm. She had <em class=\"hl\">rehearsed</em> her answers the night before, sitting at her kitchen table, speaking out loud to an <em class=\"hl\">imaginary</em> interviewer.", "The reception area was modern and quiet. A man in his forties came out to greet her. \"Priya? I'm Daniel Harris, head of the marketing team. Thanks for coming in.\"", "They sat in a glass meeting room. \"Tell me about yourself,\" he said. Priya spoke clearly about her background — her degree in communications, her two years at a small agency, the campaigns she had managed. She gave a specific example of a project where she had increased social media <em class=\"hl\">engagement</em> by forty percent in three months.", "Then came a harder question. \"Tell me about a time you failed at something.\" Priya paused. \"I once <em class=\"hl\">misjudged</em> a client's expectations on a campaign,\" she said <em class=\"hl\">honestly</em>. \"I had focused too much on creativity and not enough on results. I learned to <em class=\"hl\">align</em> expectations at the beginning of every project.\"", "Daniel looked up from his notes. He seemed satisfied with that answer. \"Good,\" he said simply. Priya allowed herself to breathe."]}, {"id": "s9", "level": "B1", "scene": "scene-roadtrip", "sceneArt": "<div class=\"scene-char\" style=\"bottom:10px;left:44%;transform:translateX(-50%)\">🚗</div>\n   <div class=\"scene-obj\" style=\"bottom:14px;left:10%;font-size:1.5rem\">🛣️</div>\n   <div class=\"scene-obj\" style=\"top:16px;left:20%\">⛰️</div>\n   <div class=\"scene-obj\" style=\"top:14px;right:18%;font-size:1.8rem\">🌅</div>\n   <div class=\"scene-obj\" style=\"bottom:18px;right:10%\">🗺️</div>", "title": "The Road Trip Decision", "character": "Ana, Tomás and Claudia", "desc": "Three friends spend months talking about a road trip and finally decide to make it happen.", "words": 278, "level_label": "B1 — Intermediário", "vocab": [{"en": "concrete", "pt": "concreto / definido", "ex": "They never planned anything concrete."}, {"en": "scenic", "pt": "panorâmico / cênico", "ex": "A scenic mountain road."}, {"en": "spreadsheet", "pt": "planilha", "ex": "Tomás created a shared spreadsheet."}, {"en": "reclaimed", "pt": "reciclado / recuperado", "ex": "Raised beds from reclaimed wood."}, {"en": "load", "pt": "carregar", "ex": "They loaded the car at six."}, {"en": "manage", "pt": "gerenciar / cuidar de", "ex": "Tomás would manage the budget."}], "paragraphs": ["For months, Ana and her two friends had been talking about doing a road trip across the south of the country. Every time they met for coffee, someone would bring it up. But they never actually planned anything <em class=\"hl\">concrete</em>.", "Then, on a Thursday evening in March, Ana sent a message to the group chat. \"If we don't book this trip in the next two weeks, we never will. I'm serious this time.\"", "By the following Saturday, they had a plan: they would drive from the capital to the coast over eight days. Ana would plan the route, Tomás would <em class=\"hl\">manage</em> the budget, and Claudia would research activities and restaurants.", "Ana discovered that if they left on a Friday morning, they could take a <em class=\"hl\">scenic</em> mountain road that most tourists never used. Tomás created a shared <em class=\"hl\">spreadsheet</em> with all their costs.", "When the day finally arrived, they <em class=\"hl\">loaded</em> the car at six in the morning. It was still dark. Ana sat in the driver's seat and looked at the road ahead. \"Ready?\" she asked. \"For months,\" Tomás said. And they drove into the morning light."]}, {"id": "s19", "level": "B1", "scene": "scene-nightshift", "sceneArt": "<div class=\"scene-char\" style=\"bottom:8px;left:46%;transform:translateX(-50%)\">👩‍⚕️</div>\n   <div class=\"scene-obj\" style=\"top:14px;left:14%\">🌙</div>\n   <div class=\"scene-obj\" style=\"top:16px;right:16%\">🏥</div>\n   <div class=\"scene-obj\" style=\"bottom:14px;left:12%;font-size:1.4rem\">📋</div>\n   <div class=\"scene-obj\" style=\"bottom:14px;right:12%\">💊</div>", "title": "The Night Shift", "character": "Sandra, a pediatric nurse", "desc": "Sandra has worked the night shift at a children's hospital for eleven years. A quiet, moving story about a life lived at opposite hours to the rest of the world.", "words": 562, "level_label": "B1 — Intermediário", "vocab": [{"en": "pediatric", "pt": "pediátrico (de crianças)", "ex": "Sandra works in the pediatric ward."}, {"en": "suspended", "pt": "suspenso / parado no tempo", "ex": "The night has a quality of suspended time."}, {"en": "reassurance", "pt": "conforto / palavras tranquilizadoras", "ex": "She has learned not to offer reassurance she does not have."}, {"en": "handover", "pt": "passagem de turno", "ex": "By five she was thinking about the handover."}, {"en": "commuter", "pt": "passageiro pendular", "ex": "She watches commuters going into the center."}, {"en": "precisely", "pt": "com precisão / exatamente", "ex": "She is precise and organized in her handovers."}], "paragraphs": ["Sandra has worked the night shift at the hospital for eleven years. She starts at ten o'clock in the evening and finishes at six in the morning. Most people she knows cannot understand why anyone would choose this schedule. Sandra has stopped trying to explain.", "There are things about the night that the daytime people do not know. At three in the morning, the hospital is different — quieter in some ways, louder in others. The corridors are dimmer. The machines still beep. The night nurses move more slowly between the wards, and their voices stay low even when there is no real reason for them to. It is a shared agreement that no one formally makes.", "Sandra works in the <em class=\"hl\">pediatric</em> ward, which means she works with children. Parents often stay with their children overnight, sleeping in uncomfortable fold-out chairs beside the beds. Sandra checks on them too — not only the patients, but the parents. She brings them tea if they are awake. Sometimes they just want someone to sit with them for a few minutes. She has learned not to offer <em class=\"hl\">reassurance</em> when she does not have it. She has learned that presence, sometimes, is enough.", "There is a particular silence between two and four in the morning that Sandra finds unlike any other silence in her life. The city is not completely still — there are always delivery trucks, sometimes sirens — but the ward has a quality of <em class=\"hl\">suspended</em> time. She does her rounds and checks her charts and the hours feel both long and compressed in a way she cannot fully explain to people who have not worked nights.", "She eats her break meal at two-thirty: always something she has brought from home. She is a good cook and she treats her night meals seriously, because the canteen is closed and the alternatives are poor. Last night she had pasta with roasted peppers and a piece of fruit. She ate alone at a small table in the break room and read twenty pages of a novel she has been working through for three weeks. She is not a fast reader on nights.", "By five in the morning, she is already thinking about the <em class=\"hl\">handover</em> — briefing the morning shift on the condition of each patient, the notes that need to be completed, anything unusual that happened during the night. She is <em class=\"hl\">precise</em> and organized in her handovers. Her colleagues trust her reports completely.", "When she leaves at six, the city is already moving. She takes the bus home and watches people going in the opposite direction — <em class=\"hl\">commuters</em> heading into the center, briefcases, headphones, coffee cups. She is always vaguely fascinated by them. Their day is beginning as hers is ending.", "She gets home at about six-forty, showers, and is usually asleep by eight. She sleeps until three or four in the afternoon. When she wakes up, she has a few hours of ordinary life — shopping, cooking, calls to her sister — before the evening meal and the preparation to do it all again. People often say to her: \"Doesn't it feel strange, living opposite to everyone else?\" Sandra always considers the question genuinely. \"No,\" she usually says. \"It just feels like my life.\" She thinks that is probably true."]}, {"id": "s20", "level": "B1", "scene": "scene-driving", "sceneArt": "<div class=\"scene-char\" style=\"bottom:8px;left:50%;transform:translateX(-50%)\">🚗</div>\n   <div class=\"scene-obj\" style=\"top:16px;left:14%;font-size:1.6rem\">🚦</div>\n   <div class=\"scene-obj\" style=\"top:16px;right:16%;font-size:1.5rem\">🛞</div>\n   <div class=\"scene-obj\" style=\"bottom:14px;left:10%\">🏫</div>\n   <div class=\"scene-obj\" style=\"bottom:14px;right:10%;font-size:1.5rem\">🏆</div>", "title": "Learning to Drive", "character": "Tom, age 28", "desc": "Tom had not planned to be twenty-eight and still unable to drive. A funny, honest story about learning something difficult later in life — and finally getting it right.", "words": 557, "level_label": "B1 — Intermediário", "vocab": [{"en": "stall", "pt": "afagar (motor) / falhar", "ex": "He stalled the car seven times."}, {"en": "clutch", "pt": "embreagem", "ex": "He found the clutch deeply confusing."}, {"en": "anticipation", "pt": "antecipação", "ex": "He learned to read the road with anticipation."}, {"en": "dual carriageway", "pt": "rodovia de pista dupla", "ex": "Catherine took him onto a dual carriageway."}, {"en": "merge", "pt": "entrar na faixa / mesclar", "ex": "He merged with traffic and held his lane."}, {"en": "roundabout", "pt": "rotatória", "ex": "He failed his first test on a roundabout."}], "paragraphs": ["Tom had not planned to be twenty-eight years old and still unable to drive. It had simply happened — years in the city, good public transport, a bicycle for most journeys, and a quiet assumption that he would get around to it eventually. Eventually had arrived.", "He booked his first lesson through an app. His instructor was a woman named Catherine who drove a small silver car with an extra brake pedal on the passenger side. She was patient in a way that did not feel performed — she had simply done this long enough that the initial disasters of new learners no longer surprised her.", "The first lesson was spent in an empty industrial estate on a Sunday morning. Tom drove at ten kilometers per hour between orange cones. He <em class=\"hl\">stalled</em> the car seven times. Catherine made a note each time and showed him what he had done wrong. He found the <em class=\"hl\">clutch</em> deeply confusing — the idea that there was a precise and narrow point where the engine connected that he had to feel rather than see seemed fundamentally unfair. \"You're thinking about it too much,\" Catherine said. \"Trust your leg.\" This seemed to Tom like terrible advice, but he tried to follow it anyway.", "By the end of the lesson, he had stalled only once in twenty minutes. Catherine said this was progress. The second and third lessons were better. He began to understand how to read the road ahead rather than fixating on the point immediately in front of the car. He learned how to check mirrors in a rhythm that felt almost natural. He drove on an actual road — a quiet one, with speed bumps and a school on the corner — and managed to not frighten anyone.", "What surprised him was how much of learning to drive was mental rather than physical. He had expected it to be purely a matter of muscle memory. Instead, there was a continuous process of observation, <em class=\"hl\">anticipation</em>, and adjustment that required a kind of relaxed attention he had not previously needed in daily life. He had to be alert and calm at the same time.", "In his sixth lesson, Catherine took him onto a <em class=\"hl\">dual carriageway</em> for the first time. The speed felt enormous — not because it was fast by any objective measure, but because he was responsible for it. He <em class=\"hl\">merged</em> with traffic and held the car in his lane and checked his mirrors and thought: I am doing this.", "He failed his first test on a <em class=\"hl\">roundabout</em>. He took the wrong exit under pressure and ended up heading towards the motorway. \"It happens,\" Catherine said in the car park afterwards. \"Roundabouts get almost everyone first time.\" Tom said nothing for a minute. \"When can I rebook?\" he asked.", "He passed on his second attempt, on a wet Thursday morning in November. He drove home — actually drove himself home — and parked badly but within the lines. He sat in the car after turning off the engine and felt something that he recognized, after a moment, as proper pride. Not in being special. Just in having done something difficult and eventually getting it right. He called his mother. \"I passed.\" She said she knew he would."]}, {"id": "s21", "level": "B1", "scene": "scene-visitor", "sceneArt": "<div class=\"scene-char\" style=\"bottom:8px;left:34%\">🧑</div>\n   <div class=\"scene-char2\" style=\"bottom:10px;right:22%\">👩‍🦱</div>\n   <div class=\"scene-obj\" style=\"top:14px;left:16%;font-size:1.6rem\">🎨</div>\n   <div class=\"scene-obj\" style=\"top:16px;right:16%\">🧳</div>\n   <div class=\"scene-obj\" style=\"bottom:14px;left:50%;transform:translateX(-50%)\">🍷</div>", "title": "The Unexpected Visitor", "character": "James and his cousin Camille", "desc": "James is repainting his kitchen when the doorbell rings — it's a cousin he hasn't seen in three years, stranded by a cancelled flight. A story about unplanned moments and old bonds.", "words": 561, "level_label": "B1 — Intermediário", "vocab": [{"en": "distinctive", "pt": "característico / inconfundível", "ex": "She had the distinctive look of a long traveler."}, {"en": "cautious", "pt": "cauteloso", "ex": "She had a slightly anxious expression."}, {"en": "chain of events", "pt": "sequência de eventos", "ex": "Daniel explained the chain of events."}, {"en": "accumulation", "pt": "acumulação", "ex": "He was amused by the accumulation of small disasters."}, {"en": "composure", "pt": "compostura / calma", "ex": "She had managed to maintain composure."}, {"en": "occasion", "pt": "ocasião / oportunidade", "ex": "A bottle saved for a vague future occasion."}], "paragraphs": ["James was in the middle of repainting his kitchen — one wall half-done, radio on, an open tin of pale yellow paint on the floor — when the doorbell rang. He looked at the time. It was half past two on a Wednesday afternoon. He was not expecting anyone.", "He went to the door with a paintbrush still in his hand. On the doorstep stood a woman in her late thirties with a large backpack, a slightly anxious expression, and the <em class=\"hl\">distinctive</em> look of someone who has been traveling for a long time. It took him a moment. \"Camille?\" he said. \"Hi,\" she said. \"I know. I should have called.\"", "Camille was James's cousin. They had grown up in the same town, spent every summer together as children, and had maintained a friendship across different cities and countries for twenty years — but always at a comfortable distance, with gaps of months between contact. She lived in Bordeaux. He had last seen her at his father's funeral, three years ago. \"Come in,\" he said. \"Sorry — the kitchen is a disaster.\"", "She came in and looked around. \"Are you decorating?\" \"Repainting,\" he said. \"Were you — were you just passing through?\" \"Not exactly,\" she said. She put her bag down. \"My flight was cancelled. I was going to a conference in Edinburgh and my connection in London was cancelled, and then the hotel I booked cancelled too, and — I remembered you lived here. I'm so sorry.\" \"Don't be ridiculous,\" he said. \"Of course you can stay.\"", "He made coffee and they sat in the living room. Camille explained the <em class=\"hl\">chain of events</em> that had led to his doorstep. James listened and found himself amused by the <em class=\"hl\">accumulation</em> of small disasters. \"Only you,\" he said. She laughed. \"I know.\"", "The afternoon passed in conversation. They had not spoken properly — really spoken, not just messages — in over a year, and there was a great deal of ground to cover. She told him about a complicated situation at work, a project that had gone wrong and a colleague she was struggling with. He told her about the year since his divorce — not all of it, but the important parts. She listened without offering solutions, which was exactly what he needed.", "He cooked dinner: pasta with whatever was in the fridge, which turned out to be more interesting than he expected. They ate at the kitchen table — the wall behind them still half-painted — and drank a bottle of wine he had been saving for a vague future <em class=\"hl\">occasion</em> that had never quite arrived.", "She left the next morning after breakfast. He drove her to the station. On the platform, she hugged him for a longer time than their usual greetings. \"I'm glad the flight was cancelled,\" she said. He thought about it. \"So am I,\" he said. And he meant it. He drove home through the morning traffic. The kitchen wall still needed a second coat. He put on the radio and picked up the brush."]}, {"id": "s10", "level": "B2", "scene": "scene-choice", "sceneArt": "<div class=\"scene-char\" style=\"bottom:10px;left:50%;transform:translateX(-50%)\">👩‍💻</div>\n   <div class=\"scene-obj\" style=\"top:20px;left:20%\">✈️</div>\n   <div class=\"scene-obj\" style=\"top:20px;right:20%\">🏠</div>\n   <div class=\"scene-obj\" style=\"bottom:20px;left:14%;font-size:1.4rem\">💼</div>\n   <div class=\"scene-obj\" style=\"bottom:20px;right:14%;font-size:1.4rem\">❤️</div>", "title": "The Weight of a Choice", "character": "Elena, a researcher", "desc": "Elena receives a dream job offer in Singapore — but her life, family, and relationship are here. A story about impossible decisions.", "words": 312, "level_label": "B2 — Avançado", "vocab": [{"en": "unread folder", "pt": "pasta de não lidos", "ex": "She kept the email in her unread folder."}, {"en": "prestigious", "pt": "conceituado / prestigioso", "ex": "One of the most prestigious institutes."}, {"en": "envy", "pt": "inveja", "ex": "Her colleagues reacted with envy."}, {"en": "proximity", "pt": "proximidade", "ex": "Proximity to family was important."}, {"en": "established", "pt": "consolidado / estabelecido", "ex": "An established relationship."}, {"en": "settled", "pt": "resolvido / definido", "ex": "A choice between two versions of herself."}], "paragraphs": ["For three weeks after the offer arrived, Elena kept the email in her <em class=\"hl\">unread folder</em>. Not because she had forgotten about it — she thought about it every single day — but because reading it officially would force her to respond, and responding would mean choosing.", "The position was in Singapore. Senior researcher at one of the most <em class=\"hl\">prestigious</em> institutes in her field. Her supervisor had called it \"extraordinary.\" Her colleagues, when she mentioned it cautiously over lunch, had reacted with something close to <em class=\"hl\">envy</em>.", "But Elena had also built a life here. Not a perfect life, but a real one. Her apartment with its slightly broken radiator and view of the park. Her sister's family three streets away, with the Sunday dinners she had never once considered optional. Her relationship with Paulo, which had survived two difficult years and arrived at something quiet and solid.", "She started making lists, as she always did when overwhelmed. On one side: career, financial security, recognition. On the other: <em class=\"hl\">proximity</em> to family, an <em class=\"hl\">established</em> relationship, roots.", "What troubled her most was the realization that no amount of logical analysis would <em class=\"hl\">settle</em> it. It was a choice between two versions of her future self, and she could only ever know one of them. She opened the email on a Tuesday morning, in the early light, before the rest of the world was awake."]}, {"id": "s11", "level": "B2", "scene": "scene-garden", "sceneArt": "<div class=\"scene-char\" style=\"bottom:10px;left:48%;transform:translateX(-50%)\">👩‍🌾</div>\n   <div class=\"scene-obj\" style=\"bottom:14px;left:12%;font-size:1.6rem\">🌱</div>\n   <div class=\"scene-obj\" style=\"bottom:14px;right:12%;font-size:1.6rem\">🌻</div>\n   <div class=\"scene-obj\" style=\"top:18px;left:18%\">🏘️</div>\n   <div class=\"scene-obj\" style=\"top:16px;right:18%;font-size:1.5rem\">💧</div>", "title": "The Community Garden", "character": "Elena Marsh and her neighbors", "desc": "An abandoned lot on Riverside Street. A retired teacher. One hand-written note through every door. A story about civic action.", "words": 308, "level_label": "B2 — Avançado", "vocab": [{"en": "abandoned", "pt": "abandonado", "ex": "The city's abandoned land program."}, {"en": "lease", "pt": "arrendar / alugar", "ex": "Residents could lease the land."}, {"en": "composting", "pt": "compostagem", "ex": "A dispute over a composting system."}, {"en": "reclaimed", "pt": "recuperado / reutilizado", "ex": "Raised beds from reclaimed wood."}, {"en": "sophisticated", "pt": "sofisticado", "ex": "Unnecessarily sophisticated but impressive."}, {"en": "civic", "pt": "cívico", "ex": "Waiting for someone else to fix things."}], "paragraphs": ["The empty lot on Riverside Street had been a problem for years. Residents had complained repeatedly to the city council. The council had responded with letters, then with promises, then with a long silence.", "It was Elena Marsh, a retired teacher who had lived on the street for thirty-one years, who finally decided to do something about it. She put a hand-written note through every door on the block: \"Community meeting. Saturday, ten o'clock. My kitchen. Tea provided.\" Fourteen people came.", "The idea she proposed was straightforward: they would transform the <em class=\"hl\">abandoned</em> lot into a shared garden. The city had a program that allowed residents to <em class=\"hl\">lease</em> unused land for community use. Elena had already downloaded the application.", "What followed was three months of organized chaos. A dispute over whether to include a <em class=\"hl\">composting</em> system very nearly ended the project entirely. But by late autumn, the lot had been cleared and raised beds had been constructed from <em class=\"hl\">reclaimed</em> wood.", "A retired engineer had built a small rainwater collection system that everyone agreed was unnecessarily <em class=\"hl\">sophisticated</em> but quietly impressive. Standing at the entrance on the opening afternoon, Elena thought about the council's long silence. Sometimes, she reflected, waiting for someone else to fix things was the problem."]}, {"id": "s12", "level": "B2", "scene": "scene-career", "sceneArt": "<div class=\"scene-char\" style=\"bottom:10px;left:50%;transform:translateX(-50%)\">🧑‍🎨</div>\n   <div class=\"scene-obj\" style=\"top:20px;left:18%\">💡</div>\n   <div class=\"scene-obj\" style=\"top:18px;right:18%\">🔄</div>\n   <div class=\"scene-obj\" style=\"bottom:16px;left:12%;font-size:1.5rem\">📊</div>\n   <div class=\"scene-obj\" style=\"bottom:16px;right:12%;font-size:1.5rem\">🎨</div>", "title": "Starting Over at Forty", "character": "David, a former accountant", "desc": "David has been a successful accountant for fifteen years. But something has been wrong for a long time.", "words": 305, "level_label": "B2 — Avançado", "vocab": [{"en": "mundane", "pt": "monótono / trivial", "ex": "The work felt increasingly mundane."}, {"en": "stumbled across", "pt": "se deparou com / encontrou por acaso", "ex": "He stumbled across a pottery class."}, {"en": "dismissed", "pt": "descartou / ignorou", "ex": "He dismissed the idea at first."}, {"en": "lopsided", "pt": "torto / desequilibrado", "ex": "His first bowls were lopsided and fragile."}, {"en": "leap of faith", "pt": "salto de fé / arriscar", "ex": "It would require a leap of faith."}, {"en": "reinvention", "pt": "reinvenção", "ex": "He was ready for reinvention."}], "paragraphs": ["David had been an accountant for fifteen years. He was good at it — genuinely good, the kind of professional who spotted errors in spreadsheets at a glance. The salary was comfortable. The work felt increasingly <em class=\"hl\">mundane</em>.", "It was on a Tuesday afternoon, during a conference call he had already mentally left, that he noticed an advertisement for a pottery studio offering evening classes. He <em class=\"hl\">stumbled across</em> it by accident — he had only gone to the kitchen for coffee.", "He <em class=\"hl\">dismissed</em> the idea at first. He was forty-one. He had a mortgage. Serious people did not suddenly abandon stable careers to make things with their hands. But the thought did not leave him.", "Over the following weeks, he enrolled in the pottery class. He was terrible at first — his first bowls were <em class=\"hl\">lopsided</em> and fragile. But there was something in the work, in the slow transformation of shapeless material into something real, that felt more honest than anything he had done in years.", "The decision to leave accounting came six months later. It would require a genuine <em class=\"hl\">leap of faith</em>. But David had come to believe that the greatest risk was not <em class=\"hl\">reinvention</em>. It was staying."]}, {"id": "s22", "level": "B2", "scene": "scene-bookshop", "sceneArt": "<div class=\"scene-char\" style=\"bottom:8px;left:46%;transform:translateX(-50%)\">👩‍💼</div>\n   <div class=\"scene-obj\" style=\"top:14px;left:14%;font-size:1.8rem\">📚</div>\n   <div class=\"scene-obj\" style=\"top:14px;right:14%;font-size:1.8rem\">📖</div>\n   <div class=\"scene-obj\" style=\"bottom:12px;left:10%\">🪜</div>\n   <div class=\"scene-obj\" style=\"bottom:14px;right:12%;font-size:1.4rem\">🏚️</div>", "title": "The Last Bookshop", "character": "Margaret, shop manager", "desc": "Whitfield's Books has survived on a street absorbed by franchises and coffee chains. Then the owner writes Margaret a letter. A story about love, legacy, and the impossible arithmetic of independent bookshops.", "words": 581, "level_label": "B2 — Avançado", "vocab": [{"en": "franchise", "pt": "franquia", "ex": "The street had been absorbed by franchises."}, {"en": "clientele", "pt": "clientela", "ex": "A loyal local clientele kept them afloat."}, {"en": "margin", "pt": "margem (de lucro)", "ex": "Margins were thin and rent reviews were not friendly."}, {"en": "reproduced", "pt": "reproduzido / imitado", "ex": "A smell no candle had ever successfully reproduced."}, {"en": "solicitor", "pt": "advogado / solicitante", "ex": "A letter from Edward's solicitor arrived."}, {"en": "lease", "pt": "contrato de arrendamento", "ex": "He was proposing to transfer the lease."}], "paragraphs": ["The sign in the window of Whitfield's Books had not changed in at least thirty years. Margaret knew this because she had a photograph of herself standing outside the shop at the age of nine, and the sign was already there — hand-painted in dark green on a cream background, a serif font that had been slightly uneven even then. The shop itself was a narrow Georgian building on a street that had otherwise been almost entirely absorbed by chain retailers and coffee <em class=\"hl\">franchises</em>. Whitfield's had, against all probability, survived.", "Margaret had worked there for twenty-two years. She had started as a part-time assistant during her university years and had, through a combination of devotion and circumstance, eventually become the manager. The owner, Edward Whitfield — grandson of the original founder — lived in a village in Shropshire and came to London twice a year. Each time, he walked around the shop slowly, ran his fingers along the shelves, and said he was glad it was still there.", "The shop was not particularly profitable. Margaret knew the numbers well. They sold enough — a loyal local <em class=\"hl\">clientele</em>, some academic trade from the nearby university, a steady stream of tourists who valued the experience of a bookshop that looked the way bookshops used to look, with stacked shelves reaching the ceiling and a wooden ladder on a rail and the particular smell of old paper that no candle manufacturer had ever quite successfully <em class=\"hl\">reproduced</em>. But <em class=\"hl\">margins</em> were thin, and rent reviews were not friendly.", "She thought about this on a Tuesday morning in February as she was opening the post. Among the invoices and a new catalogue from a literary press she liked, there was a letter from Edward's <em class=\"hl\">solicitor</em>. She opened it last. The letter was formal and precise. Edward had decided to retire properly. He was seventy-three. He was proposing to transfer the <em class=\"hl\">lease</em> of the shop — at a significantly reduced rate — to Margaret, should she wish to take it on. There was a deadline of three months to respond.", "She sat with the letter for a long time. The shop was quiet around her. It was not yet ten o'clock and no customers had come in. Rain was moving against the front window. The wooden ladder was parked at the history section, where it always ended up.", "What she felt was not simple. There was the obvious weight of the responsibility — the financial reality, the risk, the administrative complexity that she had always been able to leave to Edward and his solicitor. And there was something older and harder to name: the particular kind of attachment that comes from spending two decades in a place, from knowing the precise way the light fell through the front window on a winter afternoon, from having shelved and sold and recommended more books than she could possibly count.", "She thought of the photograph — herself at nine, the sign already in the window, the books already inside. She had gone into that shop for the first time on a Saturday with her father. She had left with a copy of a novel that she had subsequently read five times.", "She folded the letter carefully and put it in her desk drawer. Then she opened the shop."]}, {"id": "s23", "level": "B2", "scene": "scene-interpreter", "sceneArt": "<div class=\"scene-char\" style=\"bottom:8px;left:46%;transform:translateX(-50%)\">🧑‍💻</div>\n   <div class=\"scene-obj\" style=\"top:14px;left:16%;font-size:1.6rem\">🌐</div>\n   <div class=\"scene-obj\" style=\"top:16px;right:16%\">🎧</div>\n   <div class=\"scene-obj\" style=\"bottom:14px;left:12%\">🗣️</div>\n   <div class=\"scene-obj\" style=\"bottom:14px;right:12%;font-size:1.5rem\">🏛️</div>", "title": "The Interpreter", "character": "Rafael, a professional interpreter", "desc": "Rafael has spent fifteen years learning to disappear. In a Geneva conference room, he transmits every shade of meaning between two delegations who would rather wound than negotiate. A story about language, identity, and always being between.", "words": 580, "level_label": "B2 — Avançado", "vocab": [{"en": "simultaneous", "pt": "simultâneo", "ex": "The challenge of simultaneous interpretation."}, {"en": "ambiguity", "pt": "ambiguidade", "ex": "The management of ambiguity under time pressure."}, {"en": "register", "pt": "registro (linguístico)", "ex": "He modulated his register to match the speaker."}, {"en": "bilateral", "pt": "bilateral", "ex": "Bilateral negotiations between two countries."}, {"en": "coded", "pt": "codificado / velado", "ex": "Barely-coded aggression in their language."}, {"en": "nuance", "pt": "nuance / detalhe sutil", "ex": "Every shade of nuance in the speech."}], "paragraphs": ["Rafael had spent fifteen years learning to disappear. This was, he had come to understand, the essential skill of an interpreter: to be present enough to transmit every shade of meaning, and invisible enough that the people speaking through you forgot, for stretches of time, that you were there at all.", "He worked at a high level — diplomatic conferences, international summits, <em class=\"hl\">bilateral</em> negotiations where the gap between what was said and what was meant could have consequences that neither party was entirely prepared to articulate. He worked in three languages with professional fluency and a fourth at a level he described, privately, as good enough to get into trouble.", "Today he was in Geneva. The meeting was a technical working group on environmental regulation between delegations from two countries whose relationship was, to put it diplomatically, complicated. He sat in the glass booth above the conference floor, headphones on, microphone at the correct angle.", "The challenge of <em class=\"hl\">simultaneous</em> interpretation was not primarily linguistic. It was the management of <em class=\"hl\">ambiguity</em> under time pressure. A speaker might use a term that had three possible translations with different political implications. He had approximately two seconds to choose, while simultaneously listening to the next sentence. He had learned to modulate his <em class=\"hl\">register</em> to match the speaker's: formal when they were formal, measured when they paused for emphasis.", "In the second hour, something shifted. One of the delegates made a remark that was formally polite and substantively hostile — the kind of diplomatic language that was designed to wound without leaving evidence. Rafael caught it immediately. He interpreted it accurately. The two delegations continued in this mode for twenty minutes, their translators working as precise conveyors of barely-<em class=\"hl\">coded</em> aggression.", "He took his break in a small room with a coffee machine and a window overlooking the lake. He stood at the window. The lake was flat and grey. A boat was crossing it very slowly. He thought, not for the first time, about what it meant to be always between. He had grown up between two languages — his mother was from one country, his father from another — and had moved between countries and cultures for all of his adult life.", "People sometimes told him this must have been enriching. It was, and it was also something that was harder to name: the experience of never being fully inside a language, always partly observing it from a slight distance, always aware of the gap between what words officially mean and what they are actually doing. Every <em class=\"hl\">nuance</em>, every hesitation, every diplomatic silence — he noticed them all, all the time.", "He went back to the booth for the afternoon session. By the end of the day, he had interpreted for six hours and forty minutes. He walked back to his hotel. His mind was quiet. After a long interpretation session, his brain usually needed several hours before it was willing to think in full sentences again. He had learned to welcome the silence."]}, {"id": "s24", "level": "B2", "scene": "scene-legacy", "sceneArt": "<div class=\"scene-char\" style=\"bottom:8px;left:46%;transform:translateX(-50%)\">👩</div>\n   <div class=\"scene-obj\" style=\"top:14px;left:16%;font-size:1.6rem\">🏠</div>\n   <div class=\"scene-obj\" style=\"top:16px;right:16%\">📓</div>\n   <div class=\"scene-obj\" style=\"bottom:12px;left:10%;font-size:1.5rem\">📦</div>\n   <div class=\"scene-obj\" style=\"bottom:12px;right:12%\">🌹</div>", "title": "What We Leave Behind", "character": "Eleanor, clearing her father's house", "desc": "Seven months after her father's funeral, Eleanor returns to his house to clear it. In a notebook with three pages of writing and eighty blank ones, she finds something she had not expected.", "words": 583, "level_label": "B2 — Avançado", "vocab": [{"en": "meticulous", "pt": "meticuloso / cuidadoso", "ex": "Her father had been meticulous about the house."}, {"en": "habitation", "pt": "habitação / morada", "ex": "The accumulation of one person's habitation."}, {"en": "disorienting", "pt": "desorientador", "ex": "It was something more disorienting than sadness."}, {"en": "aspiration", "pt": "aspiração / anseio", "ex": "The private texture of someone's aspirations."}, {"en": "estate solicitor", "pt": "advogado de inventário", "ex": "The estate solicitor had been patient."}, {"en": "perpetually", "pt": "perpetuamente / continuamente", "ex": "The roses had come back without anyone asking them to."}], "paragraphs": ["Eleanor had not been back to the house since the funeral. Seven months had passed — long enough for the immediacy of grief to thin into something more like a persistent weather condition, present but workable. The <em class=\"hl\">estate solicitor</em> had been patient. He had sent reminders at respectful intervals. Eventually she had answered.", "The house was a semi-detached in a suburb she associated entirely with childhood. It looked smaller than she remembered, which she had expected — this was supposed to happen, a perspective shift she had been warned about. What she had not expected was how completely ordinary it still looked. The paint on the front door was the same blue it had always been, and the roses in the small front garden had come back without anyone asking them to.", "She unlocked the door and went in. The smell was the first thing. Not unpleasant — her father had been <em class=\"hl\">meticulous</em> about the house — but profoundly specific. A combination of old paper, the particular brand of coffee he had drunk every morning for forty years, and something that was simply the accumulation of one person's <em class=\"hl\">habitation</em> over decades. She had not anticipated that smell as the first blow, but it was.", "She started in the practical way: boxes for the charity shop, boxes for the family, boxes for disposal. Her father had been organized, which helped. His papers were in labeled folders. His books were alphabetized, because he was that kind of man. She worked for three hours without stopping. The logical part of it was manageable — there were decisions to make and she made them. It was the objects with no practical value that were difficult. A coffee mug with a small chip in the rim that he had refused to throw away. A photograph she had not known existed: her parents, young, somewhere she did not recognize, laughing at something off-camera.", "A notebook with three pages of writing she was not sure she should read, followed by eighty blank pages. She read the three pages. It was nothing dramatic — a list of things he had wanted to do, written in his precise handwriting, undated. Travel to Japan. Learn to identify the trees in the garden properly. Read all of Dickens. Re-learn the piano pieces he had known as a young man. None of them had been completed, as far as she knew.", "She sat on the floor of the study with the notebook in her lap for a while. What struck her was not sadness, precisely, though sadness was present. It was something more <em class=\"hl\">disorienting</em>: the sense that her father had continued to exist in dimensions she had not seen. The private texture of someone's <em class=\"hl\">aspirations</em>, kept quietly inside ordinary life, was not something children usually knew about their parents. She had known the man who showed up. She was only now meeting other versions of him.", "She finished the work. She locked the house. In the car before leaving, she sat for a moment and thought about what it was that we actually left behind — not the objects, not even the words, but the evidence, finally uncovered, that we had wanted more than we managed.", "She started the car. The roses in the front garden moved slightly in the wind. She did not look back."]}];
+
+// ── WORD POPUP ──────────────────────────────────────────────
+let popOpen = false;
+function showWordPop(e, en, pt, ex) {
+  e.stopPropagation();
+  const pop = document.getElementById('word-popup');
+  document.getElementById('wp-en').textContent = en;
+  document.getElementById('wp-pt').textContent = pt;
+  document.getElementById('wp-ex').textContent = '"' + ex + '"';
+  const r = e.target.getBoundingClientRect();
+  let left = r.left, top = r.bottom + 10;
+  if (left + 290 > window.innerWidth) left = window.innerWidth - 295;
+  if (left < 8) left = 8;
+  if (top + 140 > window.innerHeight) top = r.top - 150;
+  pop.style.left = left + 'px'; pop.style.top = top + 'px';
+  pop.classList.add('show'); popOpen = true;
+}
+function closeWordPop() {
+  document.getElementById('word-popup').classList.remove('show'); popOpen = false;
+}
+document.addEventListener('click', (e) => {
+  if (popOpen && !e.target.closest('.word-popup') && !e.target.classList.contains('hl')) closeWordPop();
+});
+
+function enhanceHighlights(vocab) {
+  const map = {};
+  vocab.forEach(v => { map[v.en.toLowerCase().trim()] = v; });
+  document.querySelectorAll('#reader-text .hl').forEach(el => {
+    const word = el.textContent.toLowerCase().trim();
+    const v = map[word];
+    if (v) {
+      el.onclick = (e) => { e.stopPropagation(); showWordPop(e, v.en, v.pt, v.ex); };
+      el.title = v.pt;
+    }
+  });
+}
+
+// ── STORIES ────────────────────────────────────────────────
+let currentStoryFilter = 'all';
+let readStories = JSON.parse(localStorage.getItem('fl_read') || '[]');
+
+function filterStories(level, btn) {
+  currentStoryFilter = level;
+  document.querySelectorAll('.level-tab').forEach(t => { t.className = 'level-tab'; });
+  btn.classList.add('active-' + (level === 'all' ? 'all' : level.toLowerCase()));
+  renderStoryGrid();
+}
+
+function renderStoryGrid() {
+  const filtered = currentStoryFilter === 'all' ? STORIES : STORIES.filter(s => s.level === currentStoryFilter);
+  document.getElementById('story-grid').innerHTML = filtered.map(s => {
+    const isRead = readStories.includes(s.id);
+    const badgeClass = 'badge-' + s.level.toLowerCase();
+    const mins = Math.ceil(s.words / 120);
+    return `<div class="story-card" onclick="openStory('${s.id}')">
+      <div class="story-scene ${s.scene}">
+        <div class="scene-art">${s.sceneArt}</div>
+        ${isRead ? '<div class="story-read-badge">✓ Lida</div>' : ''}
+      </div>
+      <div class="story-info">
+        <span class="story-level-badge ${badgeClass}">${s.level_label}</span>
+        <div class="story-title">${s.title}</div>
+        <div class="story-desc">${s.desc}</div>
+        <div class="story-meta"><span>📖 ${s.words} palavras</span><span>⏱ ~${mins} min</span><span>👤 ${s.character}</span></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openStory(id) {
+  const s = STORIES.find(x => x.id === id);
+  if (!s) return;
+  if (!readStories.includes(id)) { readStories.push(id); localStorage.setItem('fl_read', JSON.stringify(readStories)); }
+  const badgeClass = 'badge-' + s.level.toLowerCase();
+  document.getElementById('reader-level-badge').textContent = s.level_label;
+  document.getElementById('reader-level-badge').className = 'reader-level ' + badgeClass;
+  document.getElementById('reader-title').textContent = s.title;
+  document.getElementById('reader-info').innerHTML = `<span>📖 ${s.words} palavras</span><span>⏱ ~${Math.ceil(s.words/120)} min em voz alta</span><span>👤 ${s.character}</span>`;
+  const banner = document.getElementById('reader-banner');
+  banner.className = 'reader-banner ' + s.scene;
+  banner.innerHTML = `<div class="scene-art" style="position:absolute;inset:0">${s.sceneArt}</div>`;
+  // Tips
+  const tipsDefault = [
+    'Leia devagar e pronuncie cada palavra completamente.',
+    'Preste atenção nas palavras destacadas em amarelo — clique para ver o significado.',
+    'Releia o parágrafo que achar mais difícil pelo menos 2 vezes.',
+    'Tente imaginar a cena enquanto lê.'
+  ];
+  const tips = s.tips || tipsDefault;
+  document.getElementById('reader-tips').innerHTML = tips.map(t => `<li>${t}</li>`).join('');
+  // Text
+  document.getElementById('reader-text').innerHTML = s.paragraphs.map(p => `<p>${p}</p>`).join('');
+  // Vocab
+  document.getElementById('reader-vocab').innerHTML = s.vocab.map(v =>
+    `<div class="vocab-item" onclick="showWordPopFromEl(event,'${v.en.replace(/'/g,"\'")}','${v.pt.replace(/'/g,"\'")}','${v.ex.replace(/'/g,"\'")}')">
+      <div class="vocab-en">${v.en}</div>
+      <div class="vocab-pt">${v.pt}</div>
+      <div class="vocab-ex">"${v.ex}"</div>
+    </div>`
+  ).join('');
+  // Enhance clickable highlights
+  setTimeout(() => enhanceHighlights(s.vocab), 50);
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-reader').classList.add('active');
+  document.getElementById('tb-title').textContent = s.title;
+  document.getElementById('tb-sub').textContent = s.level_label + ' · Leitura em voz alta';
+  document.querySelector('.content').scrollTop = 0;
+}
+
+function showWordPopFromEl(e, en, pt, ex) {
+  e.stopPropagation();
+  const r = e.currentTarget.getBoundingClientRect();
+  const fakeEvent = { target: { getBoundingClientRect: () => r }, stopPropagation: () => {} };
+  showWordPop(fakeEvent, en, pt, ex);
+}
+
+function backToStories() {
+  renderStoryGrid();
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-stories').classList.add('active');
+  document.getElementById('tb-title').textContent = 'Histórias em Inglês';
+  document.getElementById('tb-sub').textContent = 'Leitura em voz alta · A1 a B2';
+}
+
+// ── FLASHCARDS ─────────────────────────────────────────────
+const KEY = 'flashlingo_v3';
+let db = loadDB();
+let pendingImport = [];
+
+function loadDB(){
+  try{ return JSON.parse(localStorage.getItem(KEY)) || {cards:[],streak:0,lastStudy:null}; }
+  catch{ return {cards:[],streak:0,lastStudy:null}; }
+}
+function saveDB(){ localStorage.setItem(KEY, JSON.stringify(db)); }
+
+const TEN_MIN=10*60*1000, ONE_DAY=86400000, THREE_DAYS=3*ONE_DAY;
+
+function applyRating(card, q){
+  const now=Date.now(); let nextInterval;
+  if(q===0){nextInterval=TEN_MIN;card.ef=Math.max(1.3,(card.ef||2.5)-.2);card.repetitions=0;card.status='learning';}
+  else if(q===1){nextInterval=ONE_DAY;card.ef=Math.max(1.3,(card.ef||2.5)-.1);card.status='learning';}
+  else if(q===2){nextInterval=THREE_DAYS;card.status='review';card.repetitions=(card.repetitions||0)+1;}
+  else{const base=Math.max(card.interval||ONE_DAY,ONE_DAY);nextInterval=Math.max(7*ONE_DAY,Math.round(base*2.5));card.ef=Math.min(4.0,(card.ef||2.5)+.1);card.repetitions=(card.repetitions||0)+1;card.status='review';}
+  card.interval=nextInterval;card.dueAt=now+nextInterval;card.lastReview=now;
+  return card;
+}
+function makeCard(en,pt,example){return{id:Date.now()+'_'+Math.random().toString(36).slice(2),en:en.trim(),pt:pt.trim(),example:(example||'').trim(),interval:0,ef:2.5,repetitions:0,dueAt:Date.now(),lastReview:null,status:'new'};}
+function getDue(){const now=Date.now();return db.cards.filter(c=>c.dueAt<=now).sort((a,b)=>a.dueAt-b.dueAt);}
+function fmtInterval(ms){if(!ms||ms<ONE_DAY)return '<1d';const d=Math.round(ms/ONE_DAY);if(d<30)return d+'d';if(d<365)return (d/30).toFixed(1)+'m';return (d/365).toFixed(1)+'a';}
+function fmtDate(ts){if(!ts)return '—';const diff=ts-Date.now();if(diff<0)return 'Agora';if(diff<ONE_DAY){const h=Math.floor(diff/3600000),m=Math.floor((diff%3600000)/60000);return h>0?h+'h '+m+'m':m+' min';}const d=Math.floor(diff/ONE_DAY);return d===1?'Amanhã':d+' dias';}
+
+let dueQ=[],curIdx=0,isFlipped=false,sessionDone=0,sessionCorrect=0;
+
+function initStudy(){
+  dueQ=getDue();curIdx=0;sessionDone=0;sessionCorrect=0;
+  document.getElementById('study-done').classList.remove('show');
+  document.getElementById('study-main').style.display='';
+  document.getElementById('study-empty').style.display='none';
+  renderCard();updateNavBadges();
+}
+function renderCard(){
+  const main=document.getElementById('study-main'),done=document.getElementById('study-done'),empty=document.getElementById('study-empty');
+  if(db.cards.length===0){main.style.display='none';done.classList.remove('show');empty.style.display='block';return;}
+  if(!dueQ.length||curIdx>=dueQ.length){main.style.display='none';done.classList.add('show');empty.style.display='none';renderDoneStats();updateStreak();return;}
+  main.style.display='';done.classList.remove('show');empty.style.display='none';
+  const card=dueQ[curIdx];
+  document.getElementById('cf-word').textContent=card.en;
+  document.getElementById('cb-word').textContent=card.pt;
+  document.getElementById('cb-example').textContent=card.example?'"'+card.example+'"':'';
+  document.getElementById('sc-current').textContent=curIdx+1;
+  document.getElementById('sc-total').textContent=dueQ.length;
+  document.getElementById('sc-remaining').textContent=(dueQ.length-curIdx-1)+' restantes';
+  document.getElementById('prog-fill').style.width=(curIdx/dueQ.length*100)+'%';
+  const next3=Math.max(7*ONE_DAY,Math.round(Math.max(card.interval||ONE_DAY,ONE_DAY)*2.5));
+  document.getElementById('rb3-interval').textContent=fmtInterval(next3);
+  isFlipped=false;document.getElementById('card-wrap').classList.remove('flipped');document.getElementById('rating-row').classList.remove('show');
+}
+function flipCard(){if(isFlipped)return;isFlipped=true;document.getElementById('card-wrap').classList.add('flipped');document.getElementById('rating-row').classList.add('show');}
+function rate(q){
+  if(!isFlipped){flipCard();return;}
+  const card=dueQ[curIdx],idx=db.cards.findIndex(c=>c.id===card.id);
+  if(idx>=0)db.cards[idx]=applyRating({...db.cards[idx]},q);
+  saveDB();sessionDone++;if(q>=2)sessionCorrect++;curIdx++;
+  const wrap=document.getElementById('card-wrap');
+  wrap.style.transition='opacity .15s,transform .15s';wrap.style.opacity='0';wrap.style.transform='translateY(-12px)';
+  setTimeout(()=>{wrap.style.transition='';wrap.style.opacity='';wrap.style.transform='';renderCard();updateNavBadges();},160);
+}
+function restartSession(){initStudy();}
+function renderDoneStats(){
+  const pct=sessionDone>0?Math.round(sessionCorrect/sessionDone*100):0;
+  document.getElementById('done-stats-row').innerHTML=`<div class="done-stat"><div class="done-stat-val">${sessionDone}</div><div class="done-stat-lbl">Revisados</div></div><div class="done-stat"><div class="done-stat-val" style="color:var(--green)">${sessionCorrect}</div><div class="done-stat-lbl">Acertos</div></div><div class="done-stat"><div class="done-stat-val" style="color:var(--blue)">${pct}%</div><div class="done-stat-lbl">Taxa</div></div><div class="done-stat"><div class="done-stat-val" style="color:var(--orange)">${getDue().length}</div><div class="done-stat-lbl">Pendentes</div></div>`;
+}
+function updateStreak(){
+  const today=new Date().toDateString();
+  if(db.lastStudy!==today&&sessionDone>0){const yesterday=new Date(Date.now()-ONE_DAY).toDateString();db.streak=db.lastStudy===yesterday?(db.streak||0)+1:1;db.lastStudy=today;saveDB();}
+  document.getElementById('sm-streak').textContent=db.streak||0;
+}
+
+const pageTitles={study:['Estudar','Sem limite diário — estude no seu ritmo'],stories:['Histórias em Inglês','Leitura em voz alta · A1 a B2'],add:['Adicionar Cartões','Adicione palavras uma a uma ou em lote'],import:['Importar Excel','Importe sua planilha de vocabulário'],deck:['Meu Baralho','Gerencie seus cartões'],stats:['Estatísticas','Acompanhe seu progresso']};
+
+function gotoPage(name,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if(btn)btn.classList.add('active');
+  const [title,sub]=pageTitles[name]||['',''];
+  document.getElementById('tb-title').textContent=title;document.getElementById('tb-sub').textContent=sub;
+  if(name==='study')initStudy();if(name==='stories')renderStoryGrid();if(name==='deck')renderDeck();if(name==='stats')renderStats();
+}
+
+function renderDeck(q=''){
+  const q2=(q||'').toLowerCase();
+  const cards=db.cards.filter(c=>!q2||c.en.toLowerCase().includes(q2)||c.pt.toLowerCase().includes(q2));
+  const tbody=document.getElementById('deck-tbody');
+  if(!cards.length){tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;padding:36px;color:var(--text3)">${db.cards.length===0?'Nenhum cartão ainda.':'Nenhum resultado.'}</td></tr>`;return;}
+  tbody.innerHTML=cards.map(c=>{
+    const efPct=Math.min(100,((c.ef||2.5)-1.3)/(4.0-1.3)*100);
+    const stMap={new:'pill-new',learning:'pill-learning',review:'pill-review'};
+    const stLbl={new:'Novo',learning:'Aprendendo',review:'Revisão'};
+    return `<tr><td><strong>${esc(c.en)}</strong></td><td>${esc(c.pt)}${c.example?`<div style="font-size:.72rem;color:var(--text3)">"${esc(c.example)}"</div>`:''}</td><td><span class="pill ${stMap[c.status||'new']||'pill-new'}">${stLbl[c.status||'new']||'Novo'}</span></td><td style="font-size:.8rem;color:var(--text2)">${fmtInterval(c.interval)}</td><td><div style="font-size:.75rem">${(c.ef||2.5).toFixed(2)}</div><div class="ef-bar"><div class="ef-fill" style="width:${efPct}%;background:${efPct>60?'var(--green)':efPct>30?'var(--yellow)':'var(--red)'}"></div></div></td><td style="font-size:.78rem;color:var(--text2)">${fmtDate(c.dueAt)}</td><td><button class="btn btn-danger" style="padding:5px 10px;font-size:.75rem" onclick="deleteCard('${c.id}')">✕</button></td></tr>`;
+  }).join('');
+  updateNavBadges();
+}
+function deleteCard(id){db.cards=db.cards.filter(c=>c.id!==id);saveDB();renderDeck(document.getElementById('deck-search').value);updateNavBadges();showToast('Cartão removido','🗑');}
+function clearDeck(){if(!confirm('Apagar TODOS os cartões?'))return;db.cards=[];saveDB();renderDeck();updateNavBadges();showToast('Baralho limpo','🗑');}
+
+function addSingleCard(){
+  const en=document.getElementById('inp-en').value.trim(),pt=document.getElementById('inp-pt').value.trim(),ex=document.getElementById('inp-ex').value.trim();
+  if(!en||!pt){showToast('Preencha inglês e português!','⚠️');return;}
+  db.cards.push(makeCard(en,pt,ex));saveDB();updateNavBadges();
+  document.getElementById('inp-en').value='';document.getElementById('inp-pt').value='';document.getElementById('inp-ex').value='';
+  showToast('Cartão adicionado!','✅');
+}
+function addBulkCards(){
+  const lines=document.getElementById('inp-bulk').value.trim().split('\n');
+  let count=0;
+  for(const line of lines){const [en,...rest]=line.split('|');const pt=rest.join('|').trim();if(en&&pt){db.cards.push(makeCard(en.trim(),pt));count++;}}
+  if(!count){showToast('Use: inglês | português','⚠️');return;}
+  saveDB();updateNavBadges();document.getElementById('inp-bulk').value='';showToast(count+' cartões adicionados!','✅');
+}
+function dragOver(e){e.preventDefault();document.getElementById('drop-zone').classList.add('drag-over')}
+function dragLeave(){document.getElementById('drop-zone').classList.remove('drag-over')}
+function dropFile(e){e.preventDefault();dragLeave();handleFile(e.dataTransfer.files[0])}
+function handleFile(file){
+  if(!file)return;const ext=file.name.split('.').pop().toLowerCase(),reader=new FileReader();
+  reader.onload=function(e){
+    let rows=[];
+    try{
+      if(ext==='csv'){rows=e.target.result.split('\n').map(r=>r.split(/,|;|\t/).map(c=>c.replace(/^["']|["']$/g,'').trim()));}
+      else{const wb=XLSX.read(e.target.result,{type:'binary'});rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});}
+    }catch(err){showToast('Erro ao ler arquivo','❌');return;}
+    let parsed=rows.filter(r=>r[0]&&r[1]).map(r=>({en:String(r[0]).trim(),pt:String(r[1]).trim(),ex:String(r[2]||'').trim()}));
+    if(parsed.length&&/^(english|inglês|word|en|front)/i.test(parsed[0].en))parsed.shift();
+    if(!parsed.length){showToast('Nenhuma linha válida','⚠️');return;}
+    pendingImport=parsed;showPreview(parsed);
+  };
+  if(ext==='csv')reader.readAsText(file);else reader.readAsBinaryString(file);
+}
+function showPreview(rows){
+  document.getElementById('import-preview').classList.add('show');
+  document.getElementById('preview-count').textContent=rows.length+' cartões encontrados';
+  document.getElementById('preview-tbody').innerHTML=rows.slice(0,20).map((r,i)=>`<tr><td style="color:var(--text3)">${i+1}</td><td>${esc(r.en)}</td><td>${esc(r.pt)}</td></tr>`).join('')+(rows.length>20?`<tr><td colspan="3" style="text-align:center;color:var(--text3);font-size:.75rem">... e mais ${rows.length-20} linhas</td></tr>`:'');
+}
+function confirmImport(){
+  if(!pendingImport.length)return;
+  const existing=new Set(db.cards.map(c=>c.en.toLowerCase()));let added=0,skipped=0;
+  for(const r of pendingImport){if(existing.has(r.en.toLowerCase()))skipped++;else{db.cards.push(makeCard(r.en,r.pt,r.ex));added++;}}
+  saveDB();updateNavBadges();cancelImport();showToast(added+' importados'+(skipped?', '+skipped+' duplicados':'')+'!','✅');
+}
+function cancelImport(){pendingImport=[];document.getElementById('import-preview').classList.remove('show');document.getElementById('file-input').value='';}
+
+function renderStats(){
+  const cards=db.cards,now=Date.now();
+  const due=cards.filter(c=>c.dueAt<=now).length,newC=cards.filter(c=>c.status==='new'||!c.status).length,learning=cards.filter(c=>c.status==='learning').length,review=cards.filter(c=>c.status==='review').length;
+  const avgEf=cards.length?(cards.reduce((a,c)=>a+(c.ef||2.5),0)/cards.length).toFixed(2):'—';
+  document.getElementById('stats-grid').innerHTML=`<div class="stat-tile"><div class="stat-tile-val">${cards.length}</div><div class="stat-tile-lbl">Total de Cartões</div></div><div class="stat-tile"><div class="stat-tile-val" style="color:var(--red)">${due}</div><div class="stat-tile-lbl">Para Revisar</div></div><div class="stat-tile"><div class="stat-tile-val" style="color:var(--purple)">${newC}</div><div class="stat-tile-lbl">Novos</div></div><div class="stat-tile"><div class="stat-tile-val" style="color:var(--orange)">${learning}</div><div class="stat-tile-lbl">Aprendendo</div></div><div class="stat-tile"><div class="stat-tile-val" style="color:var(--green)">${review}</div><div class="stat-tile-lbl">Em Revisão</div></div><div class="stat-tile"><div class="stat-tile-val">${avgEf}</div><div class="stat-tile-lbl">Facilidade Média</div></div><div class="stat-tile"><div class="stat-tile-val" style="color:var(--orange)">${db.streak||0}🔥</div><div class="stat-tile-lbl">Streak</div></div><div class="stat-tile"><div class="stat-tile-val">${readStories.length}/${STORIES.length}</div><div class="stat-tile-lbl">Histórias Lidas</div></div>`;
+  const total=Math.max(1,cards.length);
+  document.getElementById('dist-chart').innerHTML=`<div style="display:flex;gap:12px;flex-wrap:wrap">${[{label:'Novos',val:newC,color:'var(--purple)'},{label:'Aprend.',val:learning,color:'var(--orange)'},{label:'Revisão',val:review,color:'var(--green)'},{label:'Vencidos',val:due,color:'var(--red)'}].map(item=>`<div style="flex:1;min-width:70px"><div style="height:80px;background:var(--bg);border-radius:8px;display:flex;align-items:flex-end;overflow:hidden"><div style="width:100%;height:${Math.max(4,item.val/total*100)}%;background:${item.color};border-radius:4px 4px 0 0"></div></div><div style="text-align:center;margin-top:6px"><div style="font-weight:700;font-size:.9rem">${item.val}</div><div style="font-size:.66rem;color:var(--text3);text-transform:uppercase">${item.label}</div></div></div>`).join('')}</div>`;
+  document.getElementById('sm-total').textContent=cards.length;document.getElementById('sm-streak').textContent=db.streak||0;
+}
+
+function updateNavBadges(){
+  const due=getDue().length;
+  document.getElementById('nav-due').textContent=due;
+  document.getElementById('nav-due').style.display=due>0?'':'none';
+  document.getElementById('nav-total').textContent=db.cards.length;
+  document.getElementById('sm-total').textContent=db.cards.length;
+}
+let toastTimer;
+function showToast(msg,icon='✓'){
+  document.getElementById('toast-icon').textContent=icon;document.getElementById('toast-msg').textContent=msg;
+  const el=document.getElementById('toast');el.classList.add('show');clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('show'),2800);
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+document.addEventListener('keydown',e=>{
+  const studying=document.getElementById('page-study').classList.contains('active');
+  if(!studying)return;
+  if(e.code==='Space'&&e.target.tagName!=='INPUT'&&e.target.tagName!=='TEXTAREA'){e.preventDefault();flipCard();}
+  if(isFlipped){if(e.key==='1')rate(0);if(e.key==='2')rate(1);if(e.key==='3')rate(2);if(e.key==='4')rate(3);}
+});
+
+if(db.cards.length===0){
+  [['serendipity','serendipidade','It was a happy serendipity.'],['ephemeral','efêmero','Beauty is ephemeral.'],['resilience','resiliência','Resilience is key to success.'],['ambiguous','ambíguo','The instructions were ambiguous.'],['ubiquitous','onipresente','Smartphones are ubiquitous today.'],['eloquent','eloquente','She gave an eloquent speech.'],['perseverance','perseverança','Perseverance leads to achievement.'],['melancholy','melancolia','A sense of melancholy filled the room.']]
+  .forEach(([en,pt,ex])=>db.cards.push(makeCard(en,pt,ex)));saveDB();
+}
+updateNavBadges();initStudy();
+</script>
+</body>
+</html>
